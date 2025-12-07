@@ -11,12 +11,14 @@ function App() {
   const [activeTab, setActiveTab] = useState('chat')
   const [selectedPair, setSelectedPair] = useState('US30')
   const [stocks, setStocks] = useState([])
+  const [stocksMeta, setStocksMeta] = useState(null)
   const [news, setNews] = useState([])
   const [charts, setCharts] = useState({})
   const [uploading, setUploading] = useState(false)
   const [uploadTimeframe, setUploadTimeframe] = useState('daily')
   const [stocksLoading, setStocksLoading] = useState(false)
   const [newsLoading, setNewsLoading] = useState(false)
+  const [autoRefresh, setAutoRefresh] = useState(true)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -44,12 +46,23 @@ function App() {
       const response = await fetch(`/api/stocks/${pair}`)
       const data = await response.json()
       setStocks(data.stocks || [])
+      setStocksMeta(data.meta || null)
     } catch (error) {
       console.error('Error fetching stocks:', error)
     } finally {
       setStocksLoading(false)
     }
   }
+
+  useEffect(() => {
+    let interval
+    if (activeTab === 'stocks' && autoRefresh) {
+      interval = setInterval(() => {
+        fetchStocks(selectedPair)
+      }, 30000)
+    }
+    return () => clearInterval(interval)
+  }, [activeTab, selectedPair, autoRefresh])
 
   const fetchNews = async (pair) => {
     setNewsLoading(true)
@@ -336,8 +349,46 @@ function App() {
 
         {activeTab === 'stocks' && (
           <div className="stocks-section">
-            <h3>Major Stocks - {selectedPair}</h3>
-            {stocksLoading ? (
+            <div className="stocks-header">
+              <h3>Major Stocks - {selectedPair}</h3>
+              <div className="stocks-controls">
+                <button 
+                  className={`refresh-btn ${stocksLoading ? 'loading' : ''}`}
+                  onClick={() => fetchStocks(selectedPair)}
+                  disabled={stocksLoading}
+                >
+                  {stocksLoading ? 'Refreshing...' : 'Refresh'}
+                </button>
+                <label className="auto-refresh-toggle">
+                  <input 
+                    type="checkbox" 
+                    checked={autoRefresh} 
+                    onChange={(e) => setAutoRefresh(e.target.checked)} 
+                  />
+                  Auto-refresh (30s)
+                </label>
+              </div>
+            </div>
+            
+            {stocksMeta && (
+              <div className="market-status-bar">
+                <div className={`market-indicator ${stocksMeta.marketStatus?.isOpen ? 'open' : 'closed'}`}>
+                  <span className="status-dot"></span>
+                  <span>{stocksMeta.marketStatus?.status}</span>
+                </div>
+                <div className="data-quality">
+                  <span className={`quality-badge ${stocksMeta.dataQuality}`}>
+                    Data: {stocksMeta.dataQuality}
+                  </span>
+                </div>
+                <div className="last-updated">
+                  Updated: {new Date(stocksMeta.lastUpdated).toLocaleTimeString()}
+                  <span className="fetch-time">({stocksMeta.fetchTimeMs}ms)</span>
+                </div>
+              </div>
+            )}
+            
+            {stocksLoading && stocks.length === 0 ? (
               <div className="loading-spinner">Loading live prices...</div>
             ) : (
               <div className="stocks-grid">
@@ -346,6 +397,11 @@ function App() {
                     <div className="stock-header">
                       <span className="stock-symbol">{stock.symbol}</span>
                       <span className="stock-name">{stock.name}</span>
+                      {stock.dataStatus && stock.dataStatus !== 'live' && (
+                        <span className={`data-status-badge ${stock.dataStatus}`}>
+                          {stock.dataStatus}
+                        </span>
+                      )}
                     </div>
                     <div className="stock-price">
                       ${stock.currentPrice?.toFixed(2) || 'N/A'}

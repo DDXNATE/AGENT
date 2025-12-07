@@ -132,6 +132,84 @@ const TRADING_PAIRS = {
 
 const chartStorage = {};
 
+const stockCache = new Map();
+const CACHE_TTL = 30000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+function isMarketOpen() {
+  const now = new Date();
+  const nyTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = nyTime.getDay();
+  const hours = nyTime.getHours();
+  const minutes = nyTime.getMinutes();
+  const timeInMinutes = hours * 60 + minutes;
+  
+  if (day === 0 || day === 6) return false;
+  
+  const marketOpen = 9 * 60 + 30;
+  const marketClose = 16 * 60;
+  
+  return timeInMinutes >= marketOpen && timeInMinutes < marketClose;
+}
+
+function getMarketStatus() {
+  const now = new Date();
+  const nyTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const day = nyTime.getDay();
+  const hours = nyTime.getHours();
+  const minutes = nyTime.getMinutes();
+  const timeInMinutes = hours * 60 + minutes;
+  
+  if (day === 0) {
+    return { isOpen: false, status: 'Weekend - Market Closed', nextOpen: 'Monday 9:30 AM ET' };
+  }
+  
+  if (day === 6) {
+    return { isOpen: false, status: 'Weekend - Market Closed', nextOpen: 'Monday 9:30 AM ET' };
+  }
+  
+  const marketOpen = 9 * 60 + 30;
+  const marketClose = 16 * 60;
+  const preMarketOpen = 4 * 60;
+  const afterHoursClose = 20 * 60;
+  
+  const isFriday = day === 5;
+  const nextOpenDay = isFriday ? 'Monday' : 'Tomorrow';
+  
+  if (timeInMinutes >= marketOpen && timeInMinutes < marketClose) {
+    return { isOpen: true, status: 'Market Open', nextClose: '4:00 PM ET' };
+  } else if (timeInMinutes >= preMarketOpen && timeInMinutes < marketOpen) {
+    return { isOpen: false, status: 'Pre-Market', nextOpen: '9:30 AM ET' };
+  } else if (timeInMinutes >= marketClose && timeInMinutes < afterHoursClose) {
+    return { isOpen: false, status: 'After Hours', nextOpen: `${nextOpenDay} 9:30 AM ET` };
+  } else {
+    if (isFriday && timeInMinutes >= afterHoursClose) {
+      return { isOpen: false, status: 'Market Closed', nextOpen: 'Monday 9:30 AM ET' };
+    }
+    return { isOpen: false, status: 'Market Closed', nextOpen: '9:30 AM ET' };
+  }
+}
+
+function validateQuoteData(data) {
+  if (!data || typeof data !== 'object') return null;
+  
+  const requiredFields = ['c', 'h', 'l', 'o', 'pc'];
+  for (const field of requiredFields) {
+    if (data[field] === undefined || data[field] === null || data[field] === 0) {
+      return null;
+    }
+  }
+  
+  if (data.c <= 0 || data.h < data.l) return null;
+  
+  return data;
+}
+
+async function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const SYSTEM_PROMPT = `You are Agent Pippy (call yourself "Pippy"), a friendly and knowledgeable AI trading assistant specializing in SPX 500, NAS 100, and US30 index trading. 
 
 You help users:
@@ -149,23 +227,66 @@ Key trading pairs you specialize in:
 - NAS100 (NASDAQ 100)  
 - SPX500 (S&P 500)`;
 
-async function fetchStockQuote(symbol) {
+async function fetchStockQuote(symbol, retryCount = 0) {
+  const cacheKey = `quote_${symbol}`;
+  const cached = stockCache.get(cacheKey);
+  
+  if (cached && (Date.now() - cached.fetchedAt) < CACHE_TTL) {
+    return { ...cached.data, fromCache: true, cacheAge: Date.now() - cached.fetchedAt };
+  }
+  
   try {
     const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
+    
+    if (!response.ok) {
+      if (response.status === 429 && retryCount < MAX_RETRIES) {
+        await delay(RETRY_DELAY * (retryCount + 1));
+        return fetchStockQuote(symbol, retryCount + 1);
+      }
+      throw new Error(`API returned ${response.status}`);
+    }
+    
     const data = await response.json();
-    return {
+    const validatedData = validateQuoteData(data);
+    
+    if (!validatedData) {
+      console.warn(`Invalid data received for ${symbol}:`, data);
+      if (cached) {
+        return { ...cached.data, fromCache: true, stale: true, cacheAge: Date.now() - cached.fetchedAt };
+      }
+      return null;
+    }
+    
+    const quoteData = {
       symbol,
-      currentPrice: data.c,
-      change: data.d,
-      percentChange: data.dp,
-      high: data.h,
-      low: data.l,
-      open: data.o,
-      previousClose: data.pc,
-      timestamp: data.t
+      currentPrice: parseFloat(validatedData.c.toFixed(2)),
+      change: parseFloat((validatedData.d || 0).toFixed(2)),
+      percentChange: parseFloat((validatedData.dp || 0).toFixed(2)),
+      high: parseFloat(validatedData.h.toFixed(2)),
+      low: parseFloat(validatedData.l.toFixed(2)),
+      open: parseFloat(validatedData.o.toFixed(2)),
+      previousClose: parseFloat(validatedData.pc.toFixed(2)),
+      timestamp: validatedData.t,
+      fetchedAt: Date.now(),
+      marketStatus: getMarketStatus(),
+      fromCache: false
     };
+    
+    stockCache.set(cacheKey, { data: quoteData, fetchedAt: Date.now() });
+    
+    return quoteData;
   } catch (error) {
-    console.error(`Error fetching quote for ${symbol}:`, error);
+    console.error(`Error fetching quote for ${symbol}:`, error.message);
+    
+    if (retryCount < MAX_RETRIES) {
+      await delay(RETRY_DELAY * (retryCount + 1));
+      return fetchStockQuote(symbol, retryCount + 1);
+    }
+    
+    if (cached) {
+      return { ...cached.data, fromCache: true, stale: true, error: error.message };
+    }
+    
     return null;
   }
 }
@@ -283,6 +404,10 @@ app.get('/api/charts', (req, res) => {
   res.json(chartStorage);
 });
 
+app.get('/api/market-status', (req, res) => {
+  res.json(getMarketStatus());
+});
+
 app.get('/api/stocks/:pair', async (req, res) => {
   const { pair } = req.params;
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
@@ -291,21 +416,39 @@ app.get('/api/stocks/:pair', async (req, res) => {
     return res.status(404).json({ error: 'Trading pair not found' });
   }
   
+  const startTime = Date.now();
+  
   try {
     const quotes = await Promise.all(
       pairInfo.majorStocks.map(async (stock) => {
         const quote = await fetchStockQuote(stock.symbol);
         if (!quote) {
-          return { ...stock, currentPrice: null, change: null, percentChange: null };
+          return { ...stock, currentPrice: null, change: null, percentChange: null, dataStatus: 'unavailable' };
         }
-        return { ...stock, ...quote };
+        return { 
+          ...stock, 
+          ...quote,
+          dataStatus: quote.stale ? 'stale' : (quote.fromCache ? 'cached' : 'live')
+        };
       })
     );
+    
+    const validStocks = quotes.filter(q => q.currentPrice !== null);
+    const fetchTime = Date.now() - startTime;
     
     res.json({
       pair: pair.toUpperCase(),
       pairName: pairInfo.name,
-      stocks: quotes.filter(q => q.currentPrice !== null)
+      stocks: validStocks,
+      meta: {
+        marketStatus: getMarketStatus(),
+        lastUpdated: new Date().toISOString(),
+        fetchTimeMs: fetchTime,
+        totalStocks: pairInfo.majorStocks.length,
+        availableStocks: validStocks.length,
+        dataQuality: validStocks.filter(s => s.dataStatus === 'live').length === validStocks.length ? 'excellent' :
+                     validStocks.filter(s => s.dataStatus === 'stale').length > 0 ? 'degraded' : 'good'
+      }
     });
   } catch (error) {
     console.error('Error fetching stocks:', error);
