@@ -78,7 +78,18 @@ Start with: `npm run dev`
 - `GET /api/news/:pair` - Get latest news for stocks in a trading pair
 - `GET /api/market-news` - Get general market news
 
+## Data Accuracy Features
+- **Quote Validation**: All stock data validated for valid OHLC values and proper formatting
+- **Smart Caching**: 30-second cache with stale data fallback prevents rate limiting
+- **Retry Logic**: Up to 3 retries with exponential backoff for failed API requests
+- **Market Hours Detection**: Real-time market status (open, pre-market, after-hours, closed)
+- **Data Quality Indicators**: 
+  - Per-stock status: live, cached, or stale
+  - Overall quality: excellent, good, or degraded
+- **Auto-Refresh**: Optional 30-second auto-refresh with toggle control
+
 ## User Preferences
 - Trading focus: SPX 500, NAS 100, US30
 - Chart timeframes: 15m, 1hr, 4hr, daily
 - Real-time data priority
+- Data accuracy with freshness indicators
