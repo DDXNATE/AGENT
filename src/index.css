@@ -1,0 +1,26 @@
+:root {
+  --frost-glow-blue: #4DBBFF;
+  --neon-sky-blue: #77D4FF;
+  --misty-light-blue: #D2F2FF;
+  --frost-white: #F3FAFF;
+  --deep-ice-base: #002B40;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, var(--deep-ice-base) 0%, #003d5c 100%);
+  min-height: 100vh;
+  color: var(--frost-white);
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
