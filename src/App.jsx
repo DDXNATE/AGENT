@@ -19,6 +19,8 @@ function App() {
   const [stocksLoading, setStocksLoading] = useState(false)
   const [newsLoading, setNewsLoading] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [chartAnalysis, setChartAnalysis] = useState(null)
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -84,6 +86,52 @@ function App() {
       setCharts(data || {})
     } catch (error) {
       console.error('Error fetching charts:', error)
+    }
+  }
+
+  const analyzeCharts = async (timeframe = null) => {
+    setAnalyzing(true)
+    setChartAnalysis(null)
+    try {
+      const response = await fetch('/api/analyze-chart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pair: selectedPair, timeframe })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setChartAnalysis(data)
+      } else {
+        setChartAnalysis({ error: data.error })
+      }
+    } catch (error) {
+      console.error('Error analyzing charts:', error)
+      setChartAnalysis({ error: 'Failed to analyze charts' })
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const quickAnalysis = async (timeframe) => {
+    setAnalyzing(true)
+    try {
+      const response = await fetch('/api/quick-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pair: selectedPair, timeframe })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: `**Quick Analysis - ${selectedPair} ${timeframe}:**\n\n${data.analysis}\n\n_Processed in ${data.processingTimeMs}ms_` 
+        }])
+        setActiveTab('chat')
+      }
+    } catch (error) {
+      console.error('Error in quick analysis:', error)
+    } finally {
+      setAnalyzing(false)
     }
   }
 
@@ -320,13 +368,57 @@ function App() {
                     hidden
                   />
                 </label>
+                <button 
+                  className={`analyze-btn ${analyzing ? 'loading' : ''}`}
+                  onClick={() => analyzeCharts()}
+                  disabled={analyzing || Object.keys(charts).length === 0}
+                >
+                  {analyzing ? 'Analyzing...' : 'AI Analyze All Charts'}
+                </button>
               </div>
             </div>
+
+            {chartAnalysis && (
+              <div className="analysis-results">
+                {chartAnalysis.error ? (
+                  <div className="analysis-error">{chartAnalysis.error}</div>
+                ) : (
+                  <>
+                    <div className="analysis-header">
+                      <h4>AI Technical Analysis - {chartAnalysis.pair}</h4>
+                      <span className="analysis-meta">
+                        {chartAnalysis.meta?.chartsAnalyzed} chart(s) analyzed in {chartAnalysis.meta?.processingTimeMs}ms
+                      </span>
+                    </div>
+                    {chartAnalysis.analyses?.map((analysis, i) => (
+                      <div key={i} className="analysis-card">
+                        <div className="analysis-tf-badge">{analysis.timeframe}</div>
+                        <div className="analysis-content">{analysis.analysis}</div>
+                        <div className="analysis-timestamp">
+                          Analyzed: {new Date(analysis.analyzedAt).toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
 
             <div className="charts-grid">
               {TIMEFRAMES.map(tf => (
                 <div key={tf} className="chart-timeframe-section">
-                  <h4>{tf.toUpperCase()} Charts</h4>
+                  <div className="chart-section-header">
+                    <h4>{tf.toUpperCase()} Charts</h4>
+                    {charts[tf]?.length > 0 && (
+                      <button 
+                        className="quick-analyze-btn"
+                        onClick={() => quickAnalysis(tf)}
+                        disabled={analyzing}
+                      >
+                        Quick Analyze
+                      </button>
+                    )}
+                  </div>
                   <div className="chart-list">
                     {charts[tf]?.length > 0 ? (
                       charts[tf].map((chart, i) => (

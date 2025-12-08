@@ -17,7 +17,9 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use(express.static(path.join(__dirname, 'dist')));
+if (fs.existsSync(path.join(__dirname, 'dist'))) {
+  app.use(express.static(path.join(__dirname, 'dist')));
+}
 
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -213,27 +215,59 @@ async function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const SYSTEM_PROMPT = `You are Pippy, an AI trading assistant for US30, NAS100, SPX500.
+const SYSTEM_PROMPT = `You are Pippy, an expert AI trading analyst specializing in US30, NAS100, SPX500 technical analysis.
+
+CORE EXPERTISE:
+- Candlestick pattern recognition (doji, engulfing, hammer, shooting star, morning/evening star)
+- Support/Resistance level identification
+- Trend analysis (higher highs/lows, lower highs/lows)
+- Chart pattern recognition (head & shoulders, double top/bottom, triangles, flags)
+- Volume analysis and momentum indicators
+- Fibonacci retracement levels
+- Moving average analysis (20/50/100/200 EMA/SMA)
 
 RESPONSE RULES:
-- Be BRIEF and DIRECT. No fluff. No long introductions.
-- Max 2-3 short paragraphs unless user asks for detail.
+- Be PRECISE and ACTIONABLE. No fluff.
+- Max 2-3 short paragraphs unless asked for detail.
+- Always provide specific price levels when possible.
 - For stock data: ALWAYS use markdown tables.
-- Skip pleasantries. Get to the point.
-- Give your opinion clearly, then stop.
+- Give clear directional bias with reasoning.
 
-FORMAT EXAMPLES:
-Stock data → Use table:
-| Stock | Price | Change |
-|-------|-------|--------|
-| AAPL | $185 | +1.2% |
+FORMAT FOR CHART ANALYSIS:
+**Trend:** [Bullish/Bearish/Neutral] - [reason]
+**Key Levels:**
+- Resistance: [price]
+- Support: [price]
+**Patterns:** [identified patterns]
+**Bias:** [Long/Short/Wait] with [confidence %]
+**Entry/SL/TP:** [specific levels if applicable]
 
-Analysis → Short bullets:
-- Key level: 44,500
-- Bias: Bullish
-- Watch: FOMC meeting
+Never say "Let me explain" - just deliver the analysis.`;
 
-Never say "Let me explain" or "I'd be happy to help" - just answer.`;
+const CHART_ANALYSIS_PROMPT = `You are an expert technical analyst. Analyze this trading chart image with extreme precision.
+
+REQUIRED ANALYSIS:
+1. **Timeframe Assessment:** Identify the chart timeframe and context
+2. **Trend Direction:** Current trend (bullish/bearish/ranging) with evidence
+3. **Candlestick Patterns:** Identify any significant patterns (doji, engulfing, hammer, etc.)
+4. **Support/Resistance:** Mark key price levels visible on the chart
+5. **Chart Patterns:** Any formations (triangles, H&S, double tops, flags, wedges)
+6. **Indicator Readings:** If visible (RSI, MACD, MAs, Bollinger Bands)
+7. **Volume Analysis:** Volume trends if visible
+8. **Trade Setup:** Specific entry, stop loss, and take profit levels
+9. **Risk Assessment:** Confidence level and risk/reward ratio
+
+Be SPECIFIC with price levels. Give exact numbers when visible.
+Provide a clear BIAS: LONG, SHORT, or WAIT.`;
+
+const FAST_ANALYSIS_PROMPT = `Quick technical analysis - be direct:
+1. Trend direction
+2. Key support/resistance levels (specific prices)
+3. Current pattern forming
+4. Trade bias (Long/Short/Wait)
+5. Suggested entry & stop loss
+
+Max 100 words. No intro. Just analysis.`;
 
 async function fetchStockQuote(symbol, retryCount = 0) {
   const cacheKey = `quote_${symbol}`;
@@ -521,6 +555,100 @@ async function callGemini(prompt, systemPrompt = '') {
   return response.text || '';
 }
 
+async function analyzeChartImage(imagePath, pair, timeframe, analysisType = 'full') {
+  if (!geminiAI) {
+    throw new Error('Gemini API not configured for image analysis');
+  }
+  
+  const absolutePath = path.join(__dirname, imagePath.startsWith('/') ? imagePath.slice(1) : imagePath);
+  
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error('Chart image not found');
+  }
+  
+  const imageBuffer = fs.readFileSync(absolutePath);
+  const base64Image = imageBuffer.toString('base64');
+  const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+  
+  const contextPrompt = `
+Trading Pair: ${pair}
+Timeframe: ${timeframe}
+Analysis Type: ${analysisType === 'quick' ? 'Quick scan' : 'Full detailed analysis'}
+
+${analysisType === 'quick' ? FAST_ANALYSIS_PROMPT : CHART_ANALYSIS_PROMPT}`;
+
+  try {
+    const response = await geminiAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      config: {
+        systemInstruction: SYSTEM_PROMPT
+      },
+      contents: [
+        {
+          parts: [
+            {
+              inlineData: {
+                mimeType: mimeType,
+                data: base64Image
+              }
+            },
+            {
+              text: contextPrompt
+            }
+          ]
+        }
+      ]
+    });
+    
+    return {
+      analysis: response.text || '',
+      pair,
+      timeframe,
+      analysisType,
+      analyzedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Chart analysis error:', error);
+    throw new Error('Failed to analyze chart image');
+  }
+}
+
+const analysisCache = new Map();
+const ANALYSIS_CACHE_TTL = 300000;
+
+async function getSmartChartAnalysis(pair, timeframe = null) {
+  const charts = chartStorage[pair];
+  if (!charts || Object.keys(charts).length === 0) {
+    return null;
+  }
+  
+  const timeframes = timeframe ? [timeframe] : Object.keys(charts);
+  const analyses = [];
+  
+  for (const tf of timeframes) {
+    if (charts[tf] && charts[tf].length > 0) {
+      const latestChart = charts[tf][charts[tf].length - 1];
+      const cacheKey = `${pair}_${tf}_${latestChart.filename}`;
+      
+      const cached = analysisCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < ANALYSIS_CACHE_TTL) {
+        analyses.push(cached.data);
+        continue;
+      }
+      
+      try {
+        const analysis = await analyzeChartImage(latestChart.path, pair, tf, 'full');
+        analysisCache.set(cacheKey, { data: analysis, timestamp: Date.now() });
+        analyses.push(analysis);
+      } catch (error) {
+        console.error(`Failed to analyze ${pair} ${tf} chart:`, error.message);
+      }
+    }
+  }
+  
+  return analyses.length > 0 ? analyses : null;
+}
+
 async function callGroq(prompt, systemPrompt = '') {
   const response = await groqAI.chat.completions.create({
     model: 'llama-3.1-8b-instant',
@@ -533,7 +661,7 @@ async function callGroq(prompt, systemPrompt = '') {
   return response.choices[0]?.message?.content || '';
 }
 
-function getChartsContext(pair = null) {
+async function getChartsContext(pair = null, includeAnalysis = true) {
   let context = '';
   const pairs = pair ? [pair.toUpperCase()] : Object.keys(chartStorage);
   
@@ -543,12 +671,23 @@ function getChartsContext(pair = null) {
         if (charts.length > 0) {
           const latest = charts[charts.length - 1];
           context += `\n- ${p} ${timeframe} chart: uploaded ${latest.uploadedAt}`;
+          
+          if (includeAnalysis && geminiAI) {
+            try {
+              const analysis = await getSmartChartAnalysis(p, timeframe);
+              if (analysis && analysis.length > 0) {
+                context += `\n  Analysis: ${analysis[0].analysis.substring(0, 500)}...`;
+              }
+            } catch (e) {
+              console.log('Skipping chart analysis in context');
+            }
+          }
         }
       }
     }
   }
   
-  return context ? `\n\nUploaded Charts Available:${context}` : '';
+  return context ? `\n\nUploaded Charts with AI Analysis:${context}` : '';
 }
 
 async function getMarketContext(pair) {
@@ -583,29 +722,144 @@ function detectPairFromMessage(message) {
   return null;
 }
 
-async function chainOfDebate(userQuery) {
-  const detectedPair = detectPairFromMessage(userQuery);
-  const chartsContext = getChartsContext(detectedPair);
-  const marketContext = detectedPair ? await getMarketContext(detectedPair) : '';
+async function chainOfDebate(userQuery, requestedPair = null) {
+  const detectedPair = requestedPair || detectPairFromMessage(userQuery);
+  const isChartQuery = /chart|analyze|analysis|pattern|setup|trend|level/i.test(userQuery);
+  
+  const [chartsContext, marketContext] = await Promise.all([
+    getChartsContext(detectedPair, isChartQuery),
+    detectedPair ? getMarketContext(detectedPair) : Promise.resolve('')
+  ]);
   
   const enhancedQuery = `${userQuery}${chartsContext}${marketContext}`;
   
-  const briefPrompt = `Answer briefly in 2-3 short paragraphs max. Use tables for any stock data. No fluff.`;
+  const technicalPrompt = isChartQuery 
+    ? `Provide precise technical analysis. Include specific price levels, patterns, and actionable trade setups.`
+    : `Answer briefly in 2-3 short paragraphs max. Use tables for any stock data.`;
   
-  const geminiPrompt = `${enhancedQuery}\n\n${briefPrompt}`;
-  const groqPrompt = `${enhancedQuery}\n\n${briefPrompt} Add any key counterpoints.`;
+  const geminiPrompt = `${enhancedQuery}\n\n${technicalPrompt}`;
+  const groqPrompt = `${enhancedQuery}\n\n${technicalPrompt} Add risk considerations and alternative scenarios.`;
 
   const [geminiPerspective, groqPerspective] = await Promise.all([
     callGemini(geminiPrompt, SYSTEM_PROMPT),
     callGroq(groqPrompt, SYSTEM_PROMPT)
   ]);
 
-  const synthesisPrompt = `Combine into ONE short answer (max 150 words). Use tables for data. No intro phrases.\n\nQuery: ${userQuery}\n\nView 1:\n${geminiPerspective}\n\nView 2:\n${groqPerspective}`;
+  const synthesisPrompt = isChartQuery
+    ? `Synthesize into a professional technical analysis report (max 200 words). Include:
+- Clear trend direction
+- Key support/resistance levels
+- Pattern identification
+- Trade bias with entry/SL/TP if applicable
+- Risk/Reward assessment
+
+Query: ${userQuery}
+
+Technical View 1:
+${geminiPerspective}
+
+Risk-Aware View 2:
+${groqPerspective}`
+    : `Combine into ONE concise answer (max 150 words). Use tables for data. No intro phrases.
+
+Query: ${userQuery}
+
+View 1:
+${geminiPerspective}
+
+View 2:
+${groqPerspective}`;
   
   const finalAnswer = await callGemini(synthesisPrompt, SYSTEM_PROMPT);
   
   return finalAnswer;
 }
+
+app.post('/api/analyze-chart', async (req, res) => {
+  if (!geminiAI) {
+    return res.status(503).json({ 
+      error: 'GEMINI_API_KEY is required for chart analysis. Please add it to enable AI vision analysis.' 
+    });
+  }
+
+  try {
+    const { pair, timeframe, analysisType = 'full' } = req.body;
+    
+    if (!pair || !TRADING_PAIRS[pair.toUpperCase()]) {
+      return res.status(400).json({ error: 'Invalid trading pair' });
+    }
+    
+    const normalizedPair = pair.toUpperCase();
+    const charts = chartStorage[normalizedPair];
+    
+    if (!charts || Object.keys(charts).length === 0) {
+      return res.status(404).json({ 
+        error: `No charts uploaded for ${normalizedPair}. Please upload a chart first.` 
+      });
+    }
+    
+    const tf = timeframe?.toLowerCase();
+    if (tf && !charts[tf]) {
+      return res.status(404).json({ 
+        error: `No ${tf} chart found for ${normalizedPair}.` 
+      });
+    }
+    
+    const startTime = Date.now();
+    const analyses = await getSmartChartAnalysis(normalizedPair, tf);
+    const processingTime = Date.now() - startTime;
+    
+    if (!analyses || analyses.length === 0) {
+      return res.status(500).json({ error: 'Failed to analyze charts' });
+    }
+    
+    res.json({
+      success: true,
+      pair: normalizedPair,
+      analyses,
+      meta: {
+        processingTimeMs: processingTime,
+        chartsAnalyzed: analyses.length,
+        analyzedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Chart analysis error:', error);
+    res.status(500).json({ error: error.message || 'Failed to analyze chart' });
+  }
+});
+
+app.post('/api/quick-analysis', async (req, res) => {
+  if (!geminiAI) {
+    return res.status(503).json({ error: 'GEMINI_API_KEY required for analysis' });
+  }
+
+  try {
+    const { pair, timeframe } = req.body;
+    const normalizedPair = pair?.toUpperCase() || 'US30';
+    const tf = timeframe?.toLowerCase() || 'daily';
+    
+    const charts = chartStorage[normalizedPair]?.[tf];
+    if (!charts || charts.length === 0) {
+      return res.status(404).json({ error: 'No chart available for quick analysis' });
+    }
+    
+    const latestChart = charts[charts.length - 1];
+    const startTime = Date.now();
+    const analysis = await analyzeChartImage(latestChart.path, normalizedPair, tf, 'quick');
+    
+    res.json({
+      success: true,
+      analysis: analysis.analysis,
+      pair: normalizedPair,
+      timeframe: tf,
+      processingTimeMs: Date.now() - startTime
+    });
+  } catch (error) {
+    console.error('Quick analysis error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 app.post('/api/chat', async (req, res) => {
   if (!geminiAI || !groqAI) {
@@ -618,9 +872,9 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    const { message } = req.body;
+    const { message, pair } = req.body;
     
-    const reply = await chainOfDebate(message);
+    const reply = await chainOfDebate(message, pair);
 
     res.json({ reply });
   } catch (error) {
@@ -631,9 +885,12 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-app.get('/{*path}', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+const distPath = path.join(__dirname, 'dist', 'index.html');
+if (fs.existsSync(distPath)) {
+  app.get('/{*path}', (req, res) => {
+    res.sendFile(distPath);
+  });
+}
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
