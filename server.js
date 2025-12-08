@@ -883,7 +883,7 @@ async function chainOfDebate(userQuery, requestedPair = null) {
   const isChartQuery = /chart|analyze|analysis|pattern|setup|trend|level/i.test(userQuery);
   
   const [chartsContext, marketContext] = await Promise.all([
-    getChartsContext(detectedPair, isChartQuery),
+    getChartsContext(detectedPair, isChartQuery).catch(() => ''),
     detectedPair ? getMarketContext(detectedPair) : Promise.resolve('')
   ]);
   
@@ -896,10 +896,53 @@ async function chainOfDebate(userQuery, requestedPair = null) {
   const geminiPrompt = `${enhancedQuery}\n\n${technicalPrompt}`;
   const groqPrompt = `${enhancedQuery}\n\n${technicalPrompt} Add risk considerations and alternative scenarios.`;
 
-  const [geminiPerspective, groqPerspective] = await Promise.all([
+  let geminiPerspective = null;
+  let groqPerspective = null;
+  let geminiAvailable = true;
+
+  const results = await Promise.allSettled([
     callGemini(geminiPrompt, SYSTEM_PROMPT),
     callGroq(groqPrompt, SYSTEM_PROMPT)
   ]);
+
+  if (results[0].status === 'fulfilled') {
+    geminiPerspective = results[0].value;
+  } else {
+    geminiAvailable = false;
+    console.log('Gemini unavailable, using Groq-only mode');
+  }
+
+  if (results[1].status === 'fulfilled') {
+    groqPerspective = results[1].value;
+  }
+
+  if (!geminiPerspective && !groqPerspective) {
+    throw new Error('Both AI services are unavailable. Please try again later.');
+  }
+
+  if (!geminiAvailable && groqPerspective) {
+    const groqSynthesisPrompt = isChartQuery
+      ? `Provide a professional technical analysis report (max 200 words). Include:
+- Clear trend direction
+- Key support/resistance levels  
+- Pattern identification
+- Trade bias with entry/SL/TP if applicable
+- Risk/Reward assessment
+
+Query: ${userQuery}
+
+Analysis:
+${groqPerspective}`
+      : `Provide a concise answer (max 150 words). Use tables for data. No intro phrases.
+
+Query: ${userQuery}
+
+Analysis:
+${groqPerspective}`;
+    
+    const fallbackAnswer = await callGroq(groqSynthesisPrompt, SYSTEM_PROMPT);
+    return `${fallbackAnswer}\n\n_Note: Running in Groq-only mode (Gemini quota exceeded)_`;
+  }
 
   const synthesisPrompt = isChartQuery
     ? `Synthesize into a professional technical analysis report (max 200 words). Include:
@@ -926,9 +969,15 @@ ${geminiPerspective}
 View 2:
 ${groqPerspective}`;
   
-  const finalAnswer = await callGemini(synthesisPrompt, SYSTEM_PROMPT);
-  
-  return finalAnswer;
+  try {
+    const finalAnswer = await callGemini(synthesisPrompt, SYSTEM_PROMPT);
+    return finalAnswer;
+  } catch (error) {
+    if (groqPerspective) {
+      return `${groqPerspective}\n\n_Note: Using Groq response (Gemini synthesis unavailable)_`;
+    }
+    throw error;
+  }
 }
 
 app.post('/api/analyze-chart', async (req, res) => {
