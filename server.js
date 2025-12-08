@@ -6,6 +6,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import fs from 'fs';
+import { checkEnvironment, getEnvStatus } from './config/env.js';
+
+checkEnvironment();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -629,15 +632,21 @@ app.get('/{*path}', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Agent Pippy backend running on port ${PORT}`);
+  console.log(`\nAgent Pippy backend running on port ${PORT}`);
   console.log('Chain of Debate (CoD) - Optimized Multi-AI Architecture');
-  console.log('Trading Pairs: US30, NAS100, SPX500');
-  if (!geminiAI) console.log('Warning: GEMINI_API_KEY not set');
-  if (!groqAI) console.log('Warning: GROQ_API_KEY not set');
-  if (!FINNHUB_KEY) console.log('Warning: FINNHUB_API_KEY not set');
-  if (!ALPHA_VANTAGE_KEY) console.log('Warning: ALPHA_VANTAGE_API_KEY not set');
-  if (geminiAI && groqAI) console.log('Both Gemini and Groq AI ready!');
-  if (FINNHUB_KEY) console.log('Finnhub API ready for real-time data!');
+  console.log('Trading Pairs: US30, NAS100, SPX500\n');
+  
+  const status = getEnvStatus();
+  if (status.geminiReady && status.groqReady) {
+    console.log('✓ AI Services: Both Gemini and Groq ready!');
+  }
+  if (status.finnhubReady) {
+    console.log('✓ Market Data: Finnhub API ready!');
+  }
+  if (status.alphaVantageReady) {
+    console.log('✓ Financial Data: Alpha Vantage ready!');
+  }
+  console.log('');
 });

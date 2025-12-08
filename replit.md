@@ -51,11 +51,33 @@ The project uses a concurrent setup:
 
 Start with: `npm run dev`
 
-## Environment Variables
-- `GEMINI_API_KEY` - Required for Gemini AI
-- `GROQ_API_KEY` - Required for Groq AI
-- `FINNHUB_API_KEY` - Required for real-time stock data and news
-- `ALPHA_VANTAGE_API_KEY` - Available for additional market data
+## Environment Variables & Secrets
+
+### Required API Keys
+Store these in Replit Secrets (lock icon in left panel):
+- `GEMINI_API_KEY` - Google Gemini AI (https://aistudio.google.com/apikey)
+- `GROQ_API_KEY` - Groq AI (https://console.groq.com/keys)
+- `FINNHUB_API_KEY` - Real-time stock data (https://finnhub.io/)
+- `ALPHA_VANTAGE_API_KEY` - Financial data (https://www.alphavantage.co/support/#api-key)
+
+### Why Secrets Persist Through GitHub Updates
+Replit Secrets are stored separately from your code in Replit's secure vault. When you:
+- Pull updates from GitHub
+- Import/fork the repository again
+- Reset or rollback your code
+
+Your secrets remain intact because they are tied to your Replit account/project, NOT to the code files. GitHub never sees your secrets - they only exist in Replit's encrypted storage.
+
+### Setup for New Users
+1. Import this repository into Replit
+2. Click the "Secrets" tab (lock icon) in the left panel
+3. Add your API keys (see `.env.example` for reference)
+4. Run the project - the environment check will confirm your keys are loaded
+
+### Files for Secret Management
+- `config/env.js` - Centralized environment validation and status checking
+- `.env.example` - Template showing required variables (safe to commit)
+- `.gitignore` - Includes `.env` to prevent accidental commits
 
 ## API Endpoints
 
