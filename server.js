@@ -213,22 +213,27 @@ async function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-const SYSTEM_PROMPT = `You are Agent Pippy (call yourself "Pippy"), a friendly and knowledgeable AI trading assistant specializing in SPX 500, NAS 100, and US30 index trading. 
+const SYSTEM_PROMPT = `You are Pippy, an AI trading assistant for US30, NAS100, SPX500.
 
-You help users:
-- Analyze their uploaded trading charts (15m, 1hr, 4hr, daily timeframes)
-- Understand market movements and technical analysis
-- Track major stocks that drive index movements
-- Stay informed about relevant market news
+RESPONSE RULES:
+- Be BRIEF and DIRECT. No fluff. No long introductions.
+- Max 2-3 short paragraphs unless user asks for detail.
+- For stock data: ALWAYS use markdown tables.
+- Skip pleasantries. Get to the point.
+- Give your opinion clearly, then stop.
 
-When users ask you to analyze charts, you have access to their uploaded chart images. When they ask about major stocks or news, you can provide real-time data.
+FORMAT EXAMPLES:
+Stock data → Use table:
+| Stock | Price | Change |
+|-------|-------|--------|
+| AAPL | $185 | +1.2% |
 
-You speak in a professional yet approachable manner. You provide educational information but always remind users that trading involves risks. Never provide specific financial advice or guarantee returns.
+Analysis → Short bullets:
+- Key level: 44,500
+- Bias: Bullish
+- Watch: FOMC meeting
 
-Key trading pairs you specialize in:
-- US30 (Dow Jones Industrial Average)
-- NAS100 (NASDAQ 100)  
-- SPX500 (S&P 500)`;
+Never say "Let me explain" or "I'd be happy to help" - just answer.`;
 
 async function fetchStockQuote(symbol, retryCount = 0) {
   const cacheKey = `quote_${symbol}`;
@@ -585,21 +590,19 @@ async function chainOfDebate(userQuery) {
   
   const enhancedQuery = `${userQuery}${chartsContext}${marketContext}`;
   
-  const geminiPrompt = `Analyze this trading question and provide your perspective concisely:\n\nUser Query: ${enhancedQuery}\n\nProvide a clear, focused analysis.`;
-  const groqPrompt = `Analyze this trading question and provide your perspective concisely:\n\nUser Query: ${enhancedQuery}\n\nProvide a clear, focused analysis with any alternative viewpoints.`;
+  const briefPrompt = `Answer briefly in 2-3 short paragraphs max. Use tables for any stock data. No fluff.`;
+  
+  const geminiPrompt = `${enhancedQuery}\n\n${briefPrompt}`;
+  const groqPrompt = `${enhancedQuery}\n\n${briefPrompt} Add any key counterpoints.`;
 
   const [geminiPerspective, groqPerspective] = await Promise.all([
-    callGemini(geminiPrompt, `${SYSTEM_PROMPT}\n\nYou are AI1 (Gemini) providing the first perspective. Be concise but thorough.`),
-    callGroq(groqPrompt, `${SYSTEM_PROMPT}\n\nYou are AI2 (Groq) providing an alternative perspective. Be concise but thorough.`)
+    callGemini(geminiPrompt, SYSTEM_PROMPT),
+    callGroq(groqPrompt, SYSTEM_PROMPT)
   ]);
 
-  const synthesisPrompt = `Synthesize these two AI perspectives into a unified, helpful answer:\n\nUser Query: ${userQuery}\n\nPerspective 1 (Gemini):\n${geminiPerspective}\n\nPerspective 2 (Groq):\n${groqPerspective}\n\nProvide a clear, comprehensive answer combining the best insights from both perspectives.`;
+  const synthesisPrompt = `Combine into ONE short answer (max 150 words). Use tables for data. No intro phrases.\n\nQuery: ${userQuery}\n\nView 1:\n${geminiPerspective}\n\nView 2:\n${groqPerspective}`;
   
-  const synthesis = await callGemini(synthesisPrompt, `${SYSTEM_PROMPT}\n\nSynthesize both perspectives into a clear, helpful final answer.`);
-
-  const finalPrompt = `Review and refine this answer for the user:\n\nUser Query: ${userQuery}\n\nDraft Answer:\n${synthesis}\n\nProvide the final polished answer. Be clear, helpful, and actionable.`;
-  
-  const finalAnswer = await callGroq(finalPrompt, `${SYSTEM_PROMPT}\n\nProvide the final refined answer. Make it clear and user-friendly.`);
+  const finalAnswer = await callGemini(synthesisPrompt, SYSTEM_PROMPT);
   
   return finalAnswer;
 }
