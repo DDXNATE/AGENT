@@ -20,6 +20,26 @@ Agent Pippy is an AI-powered trading assistant using a Chain of Debate (CoD) mul
 
 The system automatically includes uploaded chart context and real-time market data when analyzing queries.
 
+## AI Vision Chart Analysis (NEW)
+
+### Technical Analysis Capabilities:
+- **Candlestick Pattern Recognition**: Doji, engulfing, hammer, shooting star, morning/evening star
+- **Support/Resistance Identification**: Key price levels with specific prices
+- **Trend Analysis**: Higher highs/lows, lower highs/lows detection
+- **Chart Pattern Recognition**: Head & shoulders, double top/bottom, triangles, flags, wedges
+- **Indicator Reading**: RSI, MACD, MAs, Bollinger Bands when visible
+- **Volume Analysis**: Volume trends and momentum indicators
+- **Fibonacci Levels**: Retracement level identification
+
+### Analysis Types:
+- **Full Analysis**: Comprehensive multi-factor technical analysis with entry/SL/TP levels
+- **Quick Analysis**: Rapid 5-point scan (trend, levels, pattern, bias, entry/stop)
+
+### Optimizations:
+- **5-minute analysis caching**: Prevents redundant API calls for same charts
+- **Parallel processing**: Multiple timeframes analyzed simultaneously
+- **Smart context injection**: Chart analysis results automatically included in chat responses
+
 ## Project Structure
 - `server.js` - Express backend with multi-AI, stock data, news, and chart upload APIs
 - `src/App.jsx` - Main React dashboard with Chat, Charts, Screener, and News tabs
@@ -83,14 +103,20 @@ Your secrets remain intact because they are tied to your Replit account/project,
 
 ### Chat
 - `POST /api/chat` - Send a message through the Chain of Debate system
-  - Body: `{ message: string }`
+  - Body: `{ message: string, pair?: string }`
   - Response: `{ reply: string }`
 
-### Charts
+### Charts & AI Analysis
 - `POST /api/upload-chart` - Upload a chart image
   - Body: FormData with `chart` (file), `pair`, `timeframe`
 - `GET /api/charts/:pair` - Get all charts for a trading pair
 - `GET /api/charts` - Get all uploaded charts
+- `POST /api/analyze-chart` - Full AI vision analysis of uploaded charts
+  - Body: `{ pair: string, timeframe?: string }`
+  - Response: `{ success: boolean, analyses: [...], meta: { processingTimeMs, chartsAnalyzed } }`
+- `POST /api/quick-analysis` - Fast AI scan of a specific chart
+  - Body: `{ pair: string, timeframe: string }`
+  - Response: `{ success: boolean, analysis: string, processingTimeMs }`
 
 ### Stocks
 - `GET /api/stocks/:pair` - Get real-time quotes for major stocks in a pair
