@@ -8,7 +8,25 @@ Agent Pippy is an AI-powered trading assistant using a Chain of Debate (CoD) mul
 - **Real-Time Stock Screener**: Live prices for major stocks driving index movements
 - **Market News Integration**: Latest news affecting your trading pairs
 - **Chain of Debate AI**: Multi-AI architecture for comprehensive analysis
+- **AI Trade Journaling**: Tell Pippy to log trades via chat - automatically parses pair, direction, P&L
+- **Trade Journal**: Full trade tracking with stats, win rate, P&L tracking, and edit capabilities
 - **3 Trading Pairs**: US30, NAS100, SPX500
+
+## AI Trade Journaling (NEW)
+
+### How to Use:
+Simply tell Pippy in the chat to log your trades. Examples:
+- "Log my US30 long, made $150"
+- "Journal: NAS100 short, lost $80"
+- "Took a trade on SPX500 long, entry 5800, exit 5850, profit $200"
+- "Update trade #1 pnl to $300"
+
+### Features:
+- **Auto-parsing**: AI extracts pair, direction, P&L, entry/exit prices from natural language
+- **Edit trades**: Update P&L, status, or any field via chat or manual edit button
+- **Quick Log**: Fast P&L-only logging via the "Quick Log (P&L)" button
+- **Full Entry**: Detailed trade entry with all fields (entry, exit, SL, TP, position size, notes)
+- **Stats Dashboard**: Win rate, total P&L, average win/loss, current streak
 
 ## Chain of Debate (CoD) System
 
