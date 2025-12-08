@@ -26,13 +26,18 @@ function App() {
   const [tradesLoading, setTradesLoading] = useState(false)
   const [showTradeForm, setShowTradeForm] = useState(false)
   const [closingTrade, setClosingTrade] = useState(null)
+  const [editingTrade, setEditingTrade] = useState(null)
+  const [tradeFormMode, setTradeFormMode] = useState('new') // 'new', 'edit', 'quick'
   const [tradeForm, setTradeForm] = useState({
     pair: 'US30',
     direction: 'LONG',
     entry_price: '',
+    exit_price: '',
     stop_loss: '',
     take_profit: '',
     position_size: '1',
+    pnl: '',
+    status: 'OPEN',
     timeframe: 'daily',
     setup_type: '',
     notes: ''
@@ -177,9 +182,77 @@ function App() {
     }
   }
 
+  const resetTradeForm = () => {
+    setTradeForm({
+      pair: selectedPair,
+      direction: 'LONG',
+      entry_price: '',
+      exit_price: '',
+      stop_loss: '',
+      take_profit: '',
+      position_size: '1',
+      pnl: '',
+      status: 'OPEN',
+      timeframe: 'daily',
+      setup_type: '',
+      notes: ''
+    })
+    setEditingTrade(null)
+    setTradeFormMode('new')
+  }
+
   const handleCreateTrade = async (e) => {
     e.preventDefault()
     try {
+      // If editing, update instead of create
+      if (editingTrade) {
+        const response = await fetch(`/api/trades/${editingTrade.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(tradeForm)
+        })
+        const data = await response.json()
+        if (data.success) {
+          setShowTradeForm(false)
+          resetTradeForm()
+          fetchTrades()
+          fetchTradeStats()
+        }
+        return
+      }
+      
+      // Quick log mode - create and immediately close with P&L
+      if (tradeFormMode === 'quick' && tradeForm.pnl) {
+        const response = await fetch('/api/trades', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...tradeForm,
+            entry_price: tradeForm.entry_price || 0
+          })
+        })
+        const data = await response.json()
+        if (data.success && data.trade) {
+          // Immediately update with P&L and status
+          await fetch(`/api/trades/${data.trade.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              exit_price: tradeForm.exit_price || tradeForm.entry_price || 0,
+              pnl: parseFloat(tradeForm.pnl),
+              status: tradeForm.status || (parseFloat(tradeForm.pnl) >= 0 ? 'WIN' : 'LOSS'),
+              exit_date: new Date()
+            })
+          })
+          setShowTradeForm(false)
+          resetTradeForm()
+          fetchTrades()
+          fetchTradeStats()
+        }
+        return
+      }
+      
+      // Regular create
       const response = await fetch('/api/trades', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -188,23 +261,40 @@ function App() {
       const data = await response.json()
       if (data.success) {
         setShowTradeForm(false)
-        setTradeForm({
-          pair: selectedPair,
-          direction: 'LONG',
-          entry_price: '',
-          stop_loss: '',
-          take_profit: '',
-          position_size: '1',
-          timeframe: 'daily',
-          setup_type: '',
-          notes: ''
-        })
+        resetTradeForm()
         fetchTrades()
         fetchTradeStats()
       }
     } catch (error) {
       console.error('Error creating trade:', error)
     }
+  }
+
+  const handleEditTrade = (trade) => {
+    setEditingTrade(trade)
+    setTradeFormMode('edit')
+    setTradeForm({
+      pair: trade.pair,
+      direction: trade.direction,
+      entry_price: trade.entry_price || '',
+      exit_price: trade.exit_price || '',
+      stop_loss: trade.stop_loss || '',
+      take_profit: trade.take_profit || '',
+      position_size: trade.position_size || '1',
+      pnl: trade.pnl || '',
+      status: trade.status || 'OPEN',
+      timeframe: trade.timeframe || 'daily',
+      setup_type: trade.setup_type || '',
+      notes: trade.notes || ''
+    })
+    setShowTradeForm(true)
+  }
+
+  const openQuickLogForm = () => {
+    resetTradeForm()
+    setTradeFormMode('quick')
+    setTradeForm(prev => ({ ...prev, pair: selectedPair }))
+    setShowTradeForm(true)
   }
 
   const handleCloseTrade = async (e) => {
@@ -287,6 +377,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage,
+          pair: selectedPair,
           history: messages.slice(-10)
         })
       })
@@ -295,6 +386,12 @@ function App() {
 
       if (response.ok) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
+        
+        // If a trade action was performed, refresh the trades list
+        if (data.tradeAction && data.tradeAction.success) {
+          fetchTrades()
+          fetchTradeStats()
+        }
       } else {
         setMessages(prev => [...prev, { 
           role: 'assistant', 
@@ -670,16 +767,26 @@ function App() {
           <div className="journal-section">
             <div className="journal-header">
               <h3>Trade Journal</h3>
-              <button 
-                className="new-trade-btn"
-                onClick={() => {
-                  setTradeForm({ ...tradeForm, pair: selectedPair })
-                  setShowTradeForm(true)
-                }}
-              >
-                + New Trade
-              </button>
+              <div className="journal-actions">
+                <button 
+                  className="quick-log-btn"
+                  onClick={openQuickLogForm}
+                >
+                  Quick Log (P&L)
+                </button>
+                <button 
+                  className="new-trade-btn"
+                  onClick={() => {
+                    resetTradeForm()
+                    setTradeForm(prev => ({ ...prev, pair: selectedPair }))
+                    setShowTradeForm(true)
+                  }}
+                >
+                  + Full Entry
+                </button>
+              </div>
             </div>
+            <p className="journal-tip">Tip: Tell Pippy in chat "log my US30 long, made $150" to auto-journal trades!</p>
 
             {tradeStats && (
               <div className="stats-dashboard">
@@ -723,9 +830,12 @@ function App() {
             )}
 
             {showTradeForm && (
-              <div className="modal-overlay" onClick={() => setShowTradeForm(false)}>
-                <div className="modal-content" onClick={e => e.stopPropagation()}>
-                  <h4>Log New Trade</h4>
+              <div className="modal-overlay" onClick={() => { setShowTradeForm(false); resetTradeForm(); }}>
+                <div className="modal-content trade-modal-large" onClick={e => e.stopPropagation()}>
+                  <h4>
+                    {editingTrade ? `Edit Trade #${editingTrade.id}` : 
+                     tradeFormMode === 'quick' ? 'Quick Log Trade' : 'Log New Trade'}
+                  </h4>
                   <form onSubmit={handleCreateTrade} className="trade-form">
                     <div className="form-row">
                       <label>
@@ -742,43 +852,98 @@ function App() {
                         </select>
                       </label>
                       <label>
+                        Status
+                        <select value={tradeForm.status} onChange={e => setTradeForm({...tradeForm, status: e.target.value})}>
+                          <option value="OPEN">OPEN</option>
+                          <option value="WIN">WIN</option>
+                          <option value="LOSS">LOSS</option>
+                          <option value="BREAKEVEN">BREAKEVEN</option>
+                        </select>
+                      </label>
+                      <label>
                         Timeframe
                         <select value={tradeForm.timeframe} onChange={e => setTradeForm({...tradeForm, timeframe: e.target.value})}>
                           {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
                         </select>
                       </label>
                     </div>
+                    
+                    {tradeFormMode === 'quick' ? (
+                      <div className="form-row quick-pnl-row">
+                        <label className="pnl-input">
+                          P&L ($) *
+                          <input 
+                            type="number" 
+                            step="0.01" 
+                            required 
+                            placeholder="e.g., 150 or -80"
+                            value={tradeForm.pnl} 
+                            onChange={e => {
+                              const pnl = e.target.value
+                              const status = pnl && parseFloat(pnl) >= 0 ? 'WIN' : pnl ? 'LOSS' : 'OPEN'
+                              setTradeForm({...tradeForm, pnl, status})
+                            }} 
+                          />
+                        </label>
+                        <label>
+                          Position Size
+                          <input type="number" step="0.01" value={tradeForm.position_size} onChange={e => setTradeForm({...tradeForm, position_size: e.target.value})} />
+                        </label>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="form-row">
+                          <label>
+                            Entry Price {tradeFormMode !== 'quick' && '*'}
+                            <input type="number" step="0.00001" required={tradeFormMode !== 'quick'} value={tradeForm.entry_price} onChange={e => setTradeForm({...tradeForm, entry_price: e.target.value})} />
+                          </label>
+                          <label>
+                            Exit Price
+                            <input type="number" step="0.00001" value={tradeForm.exit_price} onChange={e => setTradeForm({...tradeForm, exit_price: e.target.value})} />
+                          </label>
+                          <label>
+                            P&L ($)
+                            <input 
+                              type="number" 
+                              step="0.01" 
+                              placeholder="Auto or manual"
+                              value={tradeForm.pnl} 
+                              onChange={e => setTradeForm({...tradeForm, pnl: e.target.value})} 
+                            />
+                          </label>
+                        </div>
+                        <div className="form-row">
+                          <label>
+                            Stop Loss
+                            <input type="number" step="0.00001" value={tradeForm.stop_loss} onChange={e => setTradeForm({...tradeForm, stop_loss: e.target.value})} />
+                          </label>
+                          <label>
+                            Take Profit
+                            <input type="number" step="0.00001" value={tradeForm.take_profit} onChange={e => setTradeForm({...tradeForm, take_profit: e.target.value})} />
+                          </label>
+                          <label>
+                            Position Size
+                            <input type="number" step="0.01" value={tradeForm.position_size} onChange={e => setTradeForm({...tradeForm, position_size: e.target.value})} />
+                          </label>
+                        </div>
+                      </>
+                    )}
+                    
                     <div className="form-row">
-                      <label>
-                        Entry Price *
-                        <input type="number" step="0.00001" required value={tradeForm.entry_price} onChange={e => setTradeForm({...tradeForm, entry_price: e.target.value})} />
-                      </label>
-                      <label>
-                        Stop Loss
-                        <input type="number" step="0.00001" value={tradeForm.stop_loss} onChange={e => setTradeForm({...tradeForm, stop_loss: e.target.value})} />
-                      </label>
-                      <label>
-                        Take Profit
-                        <input type="number" step="0.00001" value={tradeForm.take_profit} onChange={e => setTradeForm({...tradeForm, take_profit: e.target.value})} />
-                      </label>
-                    </div>
-                    <div className="form-row">
-                      <label>
-                        Position Size
-                        <input type="number" step="0.01" value={tradeForm.position_size} onChange={e => setTradeForm({...tradeForm, position_size: e.target.value})} />
-                      </label>
-                      <label>
+                      <label className="setup-input">
                         Setup Type
-                        <input type="text" placeholder="e.g., Breakout, Pullback" value={tradeForm.setup_type} onChange={e => setTradeForm({...tradeForm, setup_type: e.target.value})} />
+                        <input type="text" placeholder="e.g., Breakout, Pullback, Reversal" value={tradeForm.setup_type} onChange={e => setTradeForm({...tradeForm, setup_type: e.target.value})} />
                       </label>
                     </div>
                     <label className="full-width">
                       Notes
-                      <textarea value={tradeForm.notes} onChange={e => setTradeForm({...tradeForm, notes: e.target.value})} rows={3} />
+                      <textarea value={tradeForm.notes} onChange={e => setTradeForm({...tradeForm, notes: e.target.value})} rows={2} placeholder="Trade notes, reasoning, lessons learned..." />
                     </label>
                     <div className="form-actions">
-                      <button type="button" className="cancel-btn" onClick={() => setShowTradeForm(false)}>Cancel</button>
-                      <button type="submit" className="submit-btn">Log Trade</button>
+                      <button type="button" className="cancel-btn" onClick={() => { setShowTradeForm(false); resetTradeForm(); }}>Cancel</button>
+                      <button type="submit" className="submit-btn">
+                        {editingTrade ? 'Update Trade' : 'Log Trade'}
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -842,6 +1007,7 @@ function App() {
                         <td><span className={`status-badge ${trade.status.toLowerCase()}`}>{trade.status}</span></td>
                         <td>{new Date(trade.entry_date).toLocaleDateString()}</td>
                         <td className="actions">
+                          <button className="edit-trade-btn" onClick={() => handleEditTrade(trade)}>Edit</button>
                           {trade.status === 'OPEN' && (
                             <button className="close-trade-btn" onClick={() => setClosingTrade(trade)}>Close</button>
                           )}

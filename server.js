@@ -725,6 +725,172 @@ function detectPairFromMessage(message) {
   return null;
 }
 
+// Trade journaling helpers
+function isTradeJournalCommand(message) {
+  const lowerMsg = message.toLowerCase();
+  const journalKeywords = [
+    'journal', 'log trade', 'log my trade', 'record trade', 'add trade',
+    'i made', 'i lost', 'won', 'profit', 'loss', 'pnl', 'p&l',
+    'closed', 'entered', 'exited', 'took a trade', 'took trade',
+    'update trade', 'edit trade', 'change trade', 'modify trade', 'redo',
+    'fix trade', 'correct trade'
+  ];
+  return journalKeywords.some(kw => lowerMsg.includes(kw));
+}
+
+function isEditTradeCommand(message) {
+  const lowerMsg = message.toLowerCase();
+  const editKeywords = ['update', 'edit', 'change', 'modify', 'redo', 'fix', 'correct'];
+  return editKeywords.some(kw => lowerMsg.includes(kw)) && 
+         (lowerMsg.includes('trade') || lowerMsg.includes('pnl') || lowerMsg.includes('journal'));
+}
+
+async function parseTradeFromAI(message, pair) {
+  if (!geminiAI) return null;
+  
+  const parsePrompt = `You are a trade data parser. Extract trade details from this message and return ONLY valid JSON.
+
+User message: "${message}"
+Default pair if not mentioned: ${pair || 'US30'}
+
+Extract and return this exact JSON format (no markdown, no explanation):
+{
+  "action": "create" or "update" or "close",
+  "trade_id": null or number (if updating/editing specific trade),
+  "pair": "US30" or "NAS100" or "SPX500",
+  "direction": "LONG" or "SHORT" or null,
+  "entry_price": number or null,
+  "exit_price": number or null,
+  "stop_loss": number or null,
+  "take_profit": number or null,
+  "pnl": number or null (positive for profit, negative for loss),
+  "status": "OPEN" or "WIN" or "LOSS" or "BREAKEVEN" or null,
+  "position_size": number or null,
+  "notes": string or null,
+  "setup_type": string or null,
+  "timeframe": "15m" or "1hr" or "4hr" or "daily" or null
+}
+
+Rules:
+- If user says "made $50" or "+50", pnl is 50 and status is WIN
+- If user says "lost $30" or "-30", pnl is -30 and status is LOSS
+- If user mentions entry/exit prices, calculate pnl if not given
+- If editing, set action to "update" and try to identify which trade
+- Return ONLY the JSON object, nothing else`;
+
+  try {
+    const model = geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    const result = await model.generateContent(parsePrompt);
+    const responseText = result.response.text().trim();
+    
+    // Extract JSON from response
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    return null;
+  } catch (error) {
+    console.error('Error parsing trade from AI:', error);
+    return null;
+  }
+}
+
+async function handleTradeJournaling(message, pair) {
+  const tradeData = await parseTradeFromAI(message, pair);
+  
+  if (!tradeData) {
+    return { success: false, message: "I couldn't understand the trade details. Please tell me: the pair (US30/NAS100/SPX500), direction (long/short), and the P&L or entry/exit prices." };
+  }
+  
+  try {
+    if (tradeData.action === 'update' && tradeData.trade_id) {
+      // Update existing trade
+      const updateData = {};
+      if (tradeData.pnl !== null) updateData.pnl = tradeData.pnl;
+      if (tradeData.exit_price !== null) updateData.exit_price = tradeData.exit_price;
+      if (tradeData.status !== null) updateData.status = tradeData.status;
+      if (tradeData.notes !== null) updateData.notes = tradeData.notes;
+      if (tradeData.entry_price !== null) updateData.entry_price = tradeData.entry_price;
+      if (tradeData.stop_loss !== null) updateData.stop_loss = tradeData.stop_loss;
+      if (tradeData.take_profit !== null) updateData.take_profit = tradeData.take_profit;
+      
+      const updatedTrade = await updateTrade(tradeData.trade_id, updateData);
+      return {
+        success: true,
+        action: 'updated',
+        trade: updatedTrade,
+        message: `Trade #${tradeData.trade_id} updated! ${tradeData.pnl !== null ? `P&L: $${tradeData.pnl}` : ''}`
+      };
+    } else if (tradeData.action === 'close' && tradeData.trade_id) {
+      // Close a trade
+      const closeData = {
+        exit_price: tradeData.exit_price || 0,
+        status: tradeData.status || (tradeData.pnl >= 0 ? 'WIN' : 'LOSS'),
+        notes: tradeData.notes
+      };
+      const closedTrade = await closeTrade(tradeData.trade_id, closeData);
+      return {
+        success: true,
+        action: 'closed',
+        trade: closedTrade,
+        message: `Trade #${tradeData.trade_id} closed! Status: ${closeData.status}`
+      };
+    } else {
+      // Create new trade - handle completed trades (with P&L) vs open trades
+      const isCompletedTrade = tradeData.pnl !== null || tradeData.status === 'WIN' || tradeData.status === 'LOSS' || tradeData.status === 'BREAKEVEN';
+      
+      const newTradeData = {
+        pair: tradeData.pair || pair || 'US30',
+        direction: tradeData.direction || 'LONG',
+        entry_price: tradeData.entry_price || 0,
+        stop_loss: tradeData.stop_loss || null,
+        take_profit: tradeData.take_profit || null,
+        position_size: tradeData.position_size || 1,
+        timeframe: tradeData.timeframe || 'daily',
+        setup_type: tradeData.setup_type || null,
+        notes: tradeData.notes || null
+      };
+      
+      const createdTrade = await createTrade(newTradeData);
+      
+      // If it's a completed trade, immediately close it with the P&L
+      if (isCompletedTrade) {
+        const closeData = {
+          exit_price: tradeData.exit_price || tradeData.entry_price || 0,
+          status: tradeData.status || (tradeData.pnl >= 0 ? 'WIN' : 'LOSS'),
+          pnl: tradeData.pnl
+        };
+        
+        // Update the trade with P&L and status
+        await updateTrade(createdTrade.id, {
+          exit_price: closeData.exit_price,
+          status: closeData.status,
+          pnl: tradeData.pnl,
+          exit_date: new Date()
+        });
+        
+        const pnlDisplay = tradeData.pnl >= 0 ? `+$${tradeData.pnl}` : `-$${Math.abs(tradeData.pnl)}`;
+        return {
+          success: true,
+          action: 'logged',
+          trade: createdTrade,
+          message: `Trade logged! ${newTradeData.pair} ${newTradeData.direction} | P&L: ${pnlDisplay} | Status: ${closeData.status}`
+        };
+      }
+      
+      return {
+        success: true,
+        action: 'created',
+        trade: createdTrade,
+        message: `New trade opened! ${newTradeData.pair} ${newTradeData.direction} at entry ${newTradeData.entry_price || 'pending'}`
+      };
+    }
+  } catch (error) {
+    console.error('Trade journaling error:', error);
+    return { success: false, message: `Failed to log trade: ${error.message}` };
+  }
+}
+
 async function chainOfDebate(userQuery, requestedPair = null) {
   const detectedPair = requestedPair || detectPairFromMessage(userQuery);
   const isChartQuery = /chart|analyze|analysis|pattern|setup|trend|level/i.test(userQuery);
@@ -865,25 +1031,50 @@ app.post('/api/quick-analysis', async (req, res) => {
 });
 
 app.post('/api/chat', async (req, res) => {
-  if (!geminiAI || !groqAI) {
-    const missing = [];
-    if (!geminiAI) missing.push('GEMINI_API_KEY');
-    if (!groqAI) missing.push('GROQ_API_KEY');
-    return res.status(503).json({ 
-      error: `Missing API keys: ${missing.join(', ')}. Please add them to enable the Chain of Debate system.` 
-    });
-  }
-
   try {
     const { message, pair } = req.body;
+    
+    // Check if this is a trade journal command
+    if (isTradeJournalCommand(message)) {
+      if (!geminiAI) {
+        return res.status(503).json({ 
+          error: 'GEMINI_API_KEY is required for AI trade journaling. Please add it in Secrets.' 
+        });
+      }
+      
+      const journalResult = await handleTradeJournaling(message, pair);
+      
+      if (journalResult.success) {
+        // Return success with trade action info
+        return res.json({ 
+          reply: `**Trade Journaled!**\n\n${journalResult.message}\n\n*Tip: Say "update trade #${journalResult.trade?.id} pnl to $X" to edit, or check the Journal tab to see all your trades.*`,
+          tradeAction: journalResult
+        });
+      } else {
+        return res.json({ 
+          reply: journalResult.message + "\n\n**Examples:**\n- \"Log my US30 long, made $150\"\n- \"Journal: NAS100 short, lost $80\"\n- \"Took a trade on SPX500 long, entry 5800, exit 5850, profit $200\"",
+          tradeAction: journalResult
+        });
+      }
+    }
+    
+    // Regular chat - needs both AI models
+    if (!geminiAI || !groqAI) {
+      const missing = [];
+      if (!geminiAI) missing.push('GEMINI_API_KEY');
+      if (!groqAI) missing.push('GROQ_API_KEY');
+      return res.status(503).json({ 
+        error: `Missing API keys: ${missing.join(', ')}. Please add them to enable the Chain of Debate system.` 
+      });
+    }
     
     const reply = await chainOfDebate(message, pair);
 
     res.json({ reply });
   } catch (error) {
-    console.error('Chain of Debate error:', error);
+    console.error('Chat error:', error);
     res.status(500).json({ 
-      error: 'Failed to get response from Agent Pippy Chain of Debate system' 
+      error: 'Failed to get response from Agent Pippy' 
     });
   }
 });

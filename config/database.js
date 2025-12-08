@@ -214,13 +214,18 @@ export async function deleteTrade(id) {
 }
 
 export async function updateTrade(id, updates) {
-  const allowedFields = ['notes', 'setup_type', 'stop_loss', 'take_profit', 'position_size'];
+  const allowedFields = [
+    'pair', 'direction', 'entry_price', 'exit_price', 
+    'stop_loss', 'take_profit', 'position_size',
+    'status', 'pnl', 'pnl_percent', 'risk_reward',
+    'timeframe', 'setup_type', 'notes', 'chart_analysis', 'exit_date'
+  ];
   const setClauses = [];
   const params = [];
   let paramCount = 0;
   
   for (const [key, value] of Object.entries(updates)) {
-    if (allowedFields.includes(key) && value !== undefined) {
+    if (allowedFields.includes(key) && value !== undefined && value !== null && value !== '') {
       paramCount++;
       setClauses.push(`${key} = $${paramCount}`);
       params.push(value);

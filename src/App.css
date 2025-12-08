@@ -1024,6 +1024,73 @@
   box-shadow: 0 6px 20px rgba(198, 255, 0, 0.4);
 }
 
+.journal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.quick-log-btn {
+  padding: 10px 20px;
+  border: 2px solid var(--neon-green);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--neon-green);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.quick-log-btn:hover {
+  background: rgba(198, 255, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+.journal-tip {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: rgba(198, 255, 0, 0.08);
+  border-left: 3px solid var(--neon-green);
+  border-radius: 0 8px 8px 0;
+}
+
+.edit-trade-btn {
+  padding: 4px 10px;
+  border: 1px solid #3498db;
+  border-radius: 4px;
+  background: transparent;
+  color: #3498db;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-trade-btn:hover {
+  background: rgba(52, 152, 219, 0.15);
+}
+
+.trade-modal-large {
+  max-width: 650px;
+}
+
+.quick-pnl-row {
+  background: rgba(198, 255, 0, 0.08);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(198, 255, 0, 0.2);
+}
+
+.pnl-input input {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.setup-input {
+  flex: 1;
+}
+
 .stats-dashboard {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
