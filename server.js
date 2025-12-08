@@ -32,31 +32,8 @@ if (!fs.existsSync(uploadsDir)) {
 const ALLOWED_PAIRS = ['US30', 'NAS100', 'SPX500'];
 const ALLOWED_TIMEFRAMES = ['15m', '1hr', '4hr', 'daily'];
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const pair = (req.body.pair || '').toUpperCase();
-    const timeframe = (req.body.timeframe || '').toLowerCase();
-    
-    if (!ALLOWED_PAIRS.includes(pair)) {
-      return cb(new Error('Invalid trading pair'), null);
-    }
-    if (!ALLOWED_TIMEFRAMES.includes(timeframe)) {
-      return cb(new Error('Invalid timeframe'), null);
-    }
-    
-    const pairDir = path.join(uploadsDir, pair, timeframe);
-    fs.mkdirSync(pairDir, { recursive: true });
-    cb(null, pairDir);
-  },
-  filename: (req, file, cb) => {
-    const timestamp = Date.now();
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-    cb(null, `${timestamp}-${safeName}`);
-  }
-});
-
 const upload = multer({ 
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
     if (allowedTypes.includes(file.mimetype)) {
@@ -402,6 +379,16 @@ app.post('/api/upload-chart', upload.single('chart'), (req, res) => {
       return res.status(400).json({ error: 'Invalid timeframe. Must be 15m, 1hr, 4hr, or daily' });
     }
     
+    const pairDir = path.join(uploadsDir, sanitizedPair, sanitizedTimeframe);
+    fs.mkdirSync(pairDir, { recursive: true });
+    
+    const timestamp = Date.now();
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const filename = `${timestamp}-${safeName}`;
+    const filePath = path.join(pairDir, filename);
+    
+    fs.writeFileSync(filePath, file.buffer);
+    
     if (!chartStorage[sanitizedPair]) {
       chartStorage[sanitizedPair] = {};
     }
@@ -410,9 +397,9 @@ app.post('/api/upload-chart', upload.single('chart'), (req, res) => {
     }
     
     const chartInfo = {
-      filename: file.filename,
+      filename: filename,
       originalName: file.originalname,
-      path: `/uploads/${sanitizedPair}/${sanitizedTimeframe}/${file.filename}`,
+      path: `/uploads/${sanitizedPair}/${sanitizedTimeframe}/${filename}`,
       uploadedAt: new Date().toISOString(),
       pair: sanitizedPair,
       timeframe: sanitizedTimeframe
