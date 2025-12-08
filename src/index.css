@@ -1,9 +1,14 @@
 :root {
-  --frost-glow-blue: #4DBBFF;
-  --neon-sky-blue: #77D4FF;
-  --misty-light-blue: #D2F2FF;
-  --frost-white: #F3FAFF;
-  --deep-ice-base: #002B40;
+  --neon-purple-deep: #1A0038;
+  --neon-purple-mid: #2D0052;
+  --electric-violet: #4B00C8;
+  --electric-violet-light: #9D4CFF;
+  --neon-green: #C6FF00;
+  --neon-green-soft: #D4FF5A;
+  --glass-purple: rgba(75, 0, 200, 0.15);
+  --glass-border: rgba(157, 76, 255, 0.3);
+  --text-white: #FFFFFF;
+  --text-muted: rgba(255, 255, 255, 0.7);
 }
 
 * {
@@ -14,13 +19,30 @@
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, var(--deep-ice-base) 0%, #003d5c 100%);
+  background: linear-gradient(135deg, var(--neon-purple-deep) 0%, #0D001A 100%);
   min-height: 100vh;
-  color: var(--frost-white);
+  color: var(--text-white);
 }
 
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--neon-purple-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--electric-violet);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--electric-violet-light);
 }
