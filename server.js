@@ -7,8 +7,11 @@ import { fileURLToPath } from 'url';
 import multer from 'multer';
 import fs from 'fs';
 import { checkEnvironment, getEnvStatus } from './config/env.js';
+import { initDatabase, createTrade, closeTrade, getTrades, getTradeStats, deleteTrade, updateTrade } from './config/database.js';
 
 checkEnvironment();
+
+initDatabase().catch(err => console.error('Database init failed:', err));
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -882,6 +885,74 @@ app.post('/api/chat', async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to get response from Agent Pippy Chain of Debate system' 
     });
+  }
+});
+
+app.post('/api/trades', async (req, res) => {
+  try {
+    const trade = await createTrade(req.body);
+    res.json({ success: true, trade });
+  } catch (error) {
+    console.error('Create trade error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/trades', async (req, res) => {
+  try {
+    const { pair, status, limit, offset } = req.query;
+    const trades = await getTrades({ pair, status, limit: parseInt(limit) || 50, offset: parseInt(offset) || 0 });
+    res.json({ trades });
+  } catch (error) {
+    console.error('Get trades error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/trades/stats', async (req, res) => {
+  try {
+    const { pair } = req.query;
+    const stats = await getTradeStats(pair);
+    res.json({ stats });
+  } catch (error) {
+    console.error('Get stats error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/trades/:id/close', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const trade = await closeTrade(id, req.body);
+    res.json({ success: true, trade });
+  } catch (error) {
+    console.error('Close trade error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/trades/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const trade = await updateTrade(id, req.body);
+    res.json({ success: true, trade });
+  } catch (error) {
+    console.error('Update trade error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/trades/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const trade = await deleteTrade(id);
+    if (!trade) {
+      return res.status(404).json({ error: 'Trade not found' });
+    }
+    res.json({ success: true, trade });
+  } catch (error) {
+    console.error('Delete trade error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

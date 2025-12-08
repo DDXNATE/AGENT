@@ -21,6 +21,22 @@ function App() {
   const [autoRefresh, setAutoRefresh] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
   const [chartAnalysis, setChartAnalysis] = useState(null)
+  const [trades, setTrades] = useState([])
+  const [tradeStats, setTradeStats] = useState(null)
+  const [tradesLoading, setTradesLoading] = useState(false)
+  const [showTradeForm, setShowTradeForm] = useState(false)
+  const [closingTrade, setClosingTrade] = useState(null)
+  const [tradeForm, setTradeForm] = useState({
+    pair: 'US30',
+    direction: 'LONG',
+    entry_price: '',
+    stop_loss: '',
+    take_profit: '',
+    position_size: '1',
+    timeframe: 'daily',
+    setup_type: '',
+    notes: ''
+  })
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -39,6 +55,9 @@ function App() {
       fetchNews(selectedPair)
     } else if (activeTab === 'charts') {
       fetchCharts(selectedPair)
+    } else if (activeTab === 'journal') {
+      fetchTrades()
+      fetchTradeStats()
     }
   }, [activeTab, selectedPair])
 
@@ -132,6 +151,95 @@ function App() {
       console.error('Error in quick analysis:', error)
     } finally {
       setAnalyzing(false)
+    }
+  }
+
+  const fetchTrades = async () => {
+    setTradesLoading(true)
+    try {
+      const response = await fetch('/api/trades')
+      const data = await response.json()
+      setTrades(data.trades || [])
+    } catch (error) {
+      console.error('Error fetching trades:', error)
+    } finally {
+      setTradesLoading(false)
+    }
+  }
+
+  const fetchTradeStats = async () => {
+    try {
+      const response = await fetch('/api/trades/stats')
+      const data = await response.json()
+      setTradeStats(data.stats || null)
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    }
+  }
+
+  const handleCreateTrade = async (e) => {
+    e.preventDefault()
+    try {
+      const response = await fetch('/api/trades', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tradeForm)
+      })
+      const data = await response.json()
+      if (data.success) {
+        setShowTradeForm(false)
+        setTradeForm({
+          pair: selectedPair,
+          direction: 'LONG',
+          entry_price: '',
+          stop_loss: '',
+          take_profit: '',
+          position_size: '1',
+          timeframe: 'daily',
+          setup_type: '',
+          notes: ''
+        })
+        fetchTrades()
+        fetchTradeStats()
+      }
+    } catch (error) {
+      console.error('Error creating trade:', error)
+    }
+  }
+
+  const handleCloseTrade = async (e) => {
+    e.preventDefault()
+    if (!closingTrade) return
+    
+    const formData = new FormData(e.target)
+    const exitPrice = formData.get('exit_price')
+    const status = formData.get('status')
+    
+    try {
+      const response = await fetch(`/api/trades/${closingTrade.id}/close`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ exit_price: exitPrice, status })
+      })
+      const data = await response.json()
+      if (data.success) {
+        setClosingTrade(null)
+        fetchTrades()
+        fetchTradeStats()
+      }
+    } catch (error) {
+      console.error('Error closing trade:', error)
+    }
+  }
+
+  const handleDeleteTrade = async (id) => {
+    if (!confirm('Delete this trade?')) return
+    try {
+      await fetch(`/api/trades/${id}`, { method: 'DELETE' })
+      fetchTrades()
+      fetchTradeStats()
+    } catch (error) {
+      console.error('Error deleting trade:', error)
     }
   }
 
@@ -258,6 +366,12 @@ function App() {
           onClick={() => setActiveTab('news')}
         >
           News
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'journal' ? 'active' : ''}`}
+          onClick={() => setActiveTab('journal')}
+        >
+          Journal
         </button>
       </nav>
 
@@ -549,6 +663,201 @@ function App() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'journal' && (
+          <div className="journal-section">
+            <div className="journal-header">
+              <h3>Trade Journal</h3>
+              <button 
+                className="new-trade-btn"
+                onClick={() => {
+                  setTradeForm({ ...tradeForm, pair: selectedPair })
+                  setShowTradeForm(true)
+                }}
+              >
+                + New Trade
+              </button>
+            </div>
+
+            {tradeStats && (
+              <div className="stats-dashboard">
+                <div className="stat-card primary">
+                  <span className="stat-value">{tradeStats.winRate}%</span>
+                  <span className="stat-label">Win Rate</span>
+                </div>
+                <div className={`stat-card ${parseFloat(tradeStats.totalPnl) >= 0 ? 'positive' : 'negative'}`}>
+                  <span className="stat-value">${tradeStats.totalPnl}</span>
+                  <span className="stat-label">Total P&L</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-value">{tradeStats.totalTrades}</span>
+                  <span className="stat-label">Total Trades</span>
+                </div>
+                <div className="stat-card positive">
+                  <span className="stat-value">{tradeStats.wins}</span>
+                  <span className="stat-label">Wins</span>
+                </div>
+                <div className="stat-card negative">
+                  <span className="stat-value">{tradeStats.losses}</span>
+                  <span className="stat-label">Losses</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-value">{tradeStats.avgRiskReward}</span>
+                  <span className="stat-label">Avg R:R</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-value">${tradeStats.avgWin}</span>
+                  <span className="stat-label">Avg Win</span>
+                </div>
+                <div className="stat-card">
+                  <span className="stat-value">${tradeStats.avgLoss}</span>
+                  <span className="stat-label">Avg Loss</span>
+                </div>
+                <div className={`stat-card ${tradeStats.streakType === 'WIN' ? 'positive' : tradeStats.streakType === 'LOSS' ? 'negative' : ''}`}>
+                  <span className="stat-value">{tradeStats.currentStreak} {tradeStats.streakType}</span>
+                  <span className="stat-label">Current Streak</span>
+                </div>
+              </div>
+            )}
+
+            {showTradeForm && (
+              <div className="modal-overlay" onClick={() => setShowTradeForm(false)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                  <h4>Log New Trade</h4>
+                  <form onSubmit={handleCreateTrade} className="trade-form">
+                    <div className="form-row">
+                      <label>
+                        Pair
+                        <select value={tradeForm.pair} onChange={e => setTradeForm({...tradeForm, pair: e.target.value})}>
+                          {TRADING_PAIRS.map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </label>
+                      <label>
+                        Direction
+                        <select value={tradeForm.direction} onChange={e => setTradeForm({...tradeForm, direction: e.target.value})}>
+                          <option value="LONG">LONG</option>
+                          <option value="SHORT">SHORT</option>
+                        </select>
+                      </label>
+                      <label>
+                        Timeframe
+                        <select value={tradeForm.timeframe} onChange={e => setTradeForm({...tradeForm, timeframe: e.target.value})}>
+                          {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="form-row">
+                      <label>
+                        Entry Price *
+                        <input type="number" step="0.00001" required value={tradeForm.entry_price} onChange={e => setTradeForm({...tradeForm, entry_price: e.target.value})} />
+                      </label>
+                      <label>
+                        Stop Loss
+                        <input type="number" step="0.00001" value={tradeForm.stop_loss} onChange={e => setTradeForm({...tradeForm, stop_loss: e.target.value})} />
+                      </label>
+                      <label>
+                        Take Profit
+                        <input type="number" step="0.00001" value={tradeForm.take_profit} onChange={e => setTradeForm({...tradeForm, take_profit: e.target.value})} />
+                      </label>
+                    </div>
+                    <div className="form-row">
+                      <label>
+                        Position Size
+                        <input type="number" step="0.01" value={tradeForm.position_size} onChange={e => setTradeForm({...tradeForm, position_size: e.target.value})} />
+                      </label>
+                      <label>
+                        Setup Type
+                        <input type="text" placeholder="e.g., Breakout, Pullback" value={tradeForm.setup_type} onChange={e => setTradeForm({...tradeForm, setup_type: e.target.value})} />
+                      </label>
+                    </div>
+                    <label className="full-width">
+                      Notes
+                      <textarea value={tradeForm.notes} onChange={e => setTradeForm({...tradeForm, notes: e.target.value})} rows={3} />
+                    </label>
+                    <div className="form-actions">
+                      <button type="button" className="cancel-btn" onClick={() => setShowTradeForm(false)}>Cancel</button>
+                      <button type="submit" className="submit-btn">Log Trade</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {closingTrade && (
+              <div className="modal-overlay" onClick={() => setClosingTrade(null)}>
+                <div className="modal-content" onClick={e => e.stopPropagation()}>
+                  <h4>Close Trade - {closingTrade.pair} {closingTrade.direction}</h4>
+                  <p className="close-info">Entry: ${parseFloat(closingTrade.entry_price).toFixed(2)}</p>
+                  <form onSubmit={handleCloseTrade} className="trade-form">
+                    <label>
+                      Exit Price *
+                      <input type="number" step="0.00001" name="exit_price" required />
+                    </label>
+                    <label>
+                      Result
+                      <select name="status" required>
+                        <option value="WIN">WIN</option>
+                        <option value="LOSS">LOSS</option>
+                        <option value="BREAKEVEN">BREAKEVEN</option>
+                      </select>
+                    </label>
+                    <div className="form-actions">
+                      <button type="button" className="cancel-btn" onClick={() => setClosingTrade(null)}>Cancel</button>
+                      <button type="submit" className="submit-btn">Close Trade</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
+
+            <div className="trades-list">
+              {tradesLoading ? (
+                <div className="loading-spinner">Loading trades...</div>
+              ) : trades.length > 0 ? (
+                <table className="trades-table">
+                  <thead>
+                    <tr>
+                      <th>Pair</th>
+                      <th>Direction</th>
+                      <th>Entry</th>
+                      <th>Exit</th>
+                      <th>P&L</th>
+                      <th>Status</th>
+                      <th>Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trades.map(trade => (
+                      <tr key={trade.id} className={`trade-row ${trade.status.toLowerCase()}`}>
+                        <td>{trade.pair}</td>
+                        <td className={trade.direction === 'LONG' ? 'long' : 'short'}>{trade.direction}</td>
+                        <td>${parseFloat(trade.entry_price).toFixed(2)}</td>
+                        <td>{trade.exit_price ? `$${parseFloat(trade.exit_price).toFixed(2)}` : '-'}</td>
+                        <td className={parseFloat(trade.pnl) >= 0 ? 'positive' : 'negative'}>
+                          {trade.pnl ? `$${parseFloat(trade.pnl).toFixed(2)}` : '-'}
+                        </td>
+                        <td><span className={`status-badge ${trade.status.toLowerCase()}`}>{trade.status}</span></td>
+                        <td>{new Date(trade.entry_date).toLocaleDateString()}</td>
+                        <td className="actions">
+                          {trade.status === 'OPEN' && (
+                            <button className="close-trade-btn" onClick={() => setClosingTrade(trade)}>Close</button>
+                          )}
+                          <button className="delete-trade-btn" onClick={() => handleDeleteTrade(trade.id)}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <div className="no-trades">
+                  <p>No trades logged yet. Start tracking your trades!</p>
+                  <button className="new-trade-btn" onClick={() => setShowTradeForm(true)}>+ Log Your First Trade</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>

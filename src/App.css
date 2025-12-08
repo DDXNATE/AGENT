@@ -990,6 +990,297 @@
   50% { opacity: 0.7; }
 }
 
+.journal-section {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.journal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.journal-header h3 {
+  margin: 0;
+  color: var(--neon-green);
+}
+
+.new-trade-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--neon-green), var(--neon-green-soft));
+  color: var(--neon-purple-deep);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.new-trade-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(198, 255, 0, 0.4);
+}
+
+.stats-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--glass-purple);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.stat-card.primary {
+  background: linear-gradient(135deg, rgba(198, 255, 0, 0.15), rgba(198, 255, 0, 0.05));
+  border-color: rgba(198, 255, 0, 0.3);
+}
+
+.stat-card.positive {
+  background: linear-gradient(135deg, rgba(46, 213, 115, 0.15), rgba(46, 213, 115, 0.05));
+  border-color: rgba(46, 213, 115, 0.3);
+}
+
+.stat-card.negative {
+  background: linear-gradient(135deg, rgba(255, 71, 87, 0.15), rgba(255, 71, 87, 0.05));
+  border-color: rgba(255, 71, 87, 0.3);
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.stat-card.positive .stat-value { color: #2ed573; }
+.stat-card.negative .stat-value { color: #ff4757; }
+.stat-card.primary .stat-value { color: var(--neon-green); }
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: var(--neon-purple-deep);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content h4 {
+  margin: 0 0 20px;
+  color: var(--neon-green);
+}
+
+.close-info {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.trade-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.trade-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.trade-form input,
+.trade-form select,
+.trade-form textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: rgba(45, 0, 82, 0.5);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.trade-form input:focus,
+.trade-form select:focus,
+.trade-form textarea:focus {
+  outline: none;
+  border-color: var(--neon-green);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.cancel-btn {
+  padding: 10px 20px;
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.submit-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--neon-green), var(--neon-green-soft));
+  color: var(--neon-purple-deep);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trades-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--glass-purple);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.trades-table th {
+  padding: 14px 12px;
+  text-align: left;
+  background: rgba(45, 0, 82, 0.8);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.trades-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--glass-border);
+  color: var(--text-primary);
+}
+
+.trade-row:last-child td {
+  border-bottom: none;
+}
+
+.trade-row .long { color: #2ed573; }
+.trade-row .short { color: #ff4757; }
+.trade-row .positive { color: #2ed573; }
+.trade-row .negative { color: #ff4757; }
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.open {
+  background: rgba(157, 76, 255, 0.2);
+  color: var(--electric-violet-light);
+}
+
+.status-badge.win {
+  background: rgba(46, 213, 115, 0.2);
+  color: #2ed573;
+}
+
+.status-badge.loss {
+  background: rgba(255, 71, 87, 0.2);
+  color: #ff4757;
+}
+
+.status-badge.breakeven {
+  background: rgba(255, 159, 67, 0.2);
+  color: #ff9f43;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.close-trade-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--neon-green);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--neon-green);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.close-trade-btn:hover {
+  background: rgba(198, 255, 0, 0.15);
+}
+
+.delete-trade-btn {
+  padding: 6px 12px;
+  border: 1px solid #ff4757;
+  border-radius: 6px;
+  background: transparent;
+  color: #ff4757;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.delete-trade-btn:hover {
+  background: rgba(255, 71, 87, 0.15);
+}
+
+.no-trades {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-muted);
+}
+
+.no-trades p {
+  margin-bottom: 20px;
+}
+
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;
