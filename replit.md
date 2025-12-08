@@ -10,6 +10,8 @@ Agent Pippy is an AI-powered trading assistant using a Chain of Debate (CoD) mul
 - **Chain of Debate AI**: Multi-AI architecture for comprehensive analysis
 - **AI Trade Journaling**: Tell Pippy to log trades via chat - automatically parses pair, direction, P&L
 - **Trade Journal**: Full trade tracking with stats, win rate, P&L tracking, and edit capabilities
+- **AI Trading Planner**: Comprehensive daily trading plan combining charts, stocks, news & economic calendar
+- **Economic Calendar**: Live red/orange folder high-impact news from Forex Factory
 - **3 Trading Pairs**: US30, NAS100, SPX500
 
 ## AI Trade Journaling (NEW)
@@ -37,6 +39,36 @@ Simply tell Pippy in the chat to log your trades. Examples:
 4. **Final Refinement (Groq)** → Polishes and delivers the final answer
 
 The system automatically includes uploaded chart context and real-time market data when analyzing queries.
+
+## AI Trading Planner (NEW)
+
+### Overview:
+The Planner is an intelligent trading plan generator that synthesizes multiple data sources to create a comprehensive daily trading plan. It combines:
+1. **Chart Analysis**: Technical analysis of your uploaded charts
+2. **Stock Trends**: Performance of major component stocks
+3. **Market News**: Recent news affecting the markets
+4. **Economic Calendar**: High-impact (red folder) and medium-impact (orange folder) events from Forex Factory
+
+### How to Use:
+1. Go to the **Planner** tab
+2. Upload your charts first (optional but recommended)
+3. Click "Generate Today's Plan"
+4. Wait 10-30 seconds for the AI to analyze all data sources
+5. Review your personalized trading plan with entry/exit levels, risk warnings, and session timing
+
+### Plan Output Includes:
+- **Overall Bias**: BULLISH / BEARISH / NEUTRAL
+- **Confidence Level**: LOW / MEDIUM / HIGH
+- **Key Factors**: Technical, sentiment, fundamentals, events summary
+- **Action Plan**: Primary direction, entry zone, stop loss, take profit levels
+- **Risk Warnings**: Events that could invalidate the plan
+- **Session Timing**: Best times to trade based on events
+
+### Economic Calendar Features:
+- Live data from Forex Factory
+- Filters for HIGH (red folder) and MEDIUM (orange folder) impact events
+- Today's events and upcoming week events
+- Forecast vs previous values displayed
 
 ## AI Vision Chart Analysis (NEW)
 
@@ -143,6 +175,15 @@ Your secrets remain intact because they are tied to your Replit account/project,
 ### News
 - `GET /api/news/:pair` - Get latest news for stocks in a trading pair
 - `GET /api/market-news` - Get general market news
+
+### Planner & Economic Calendar
+- `GET /api/economic-calendar` - Get high-impact economic events from Forex Factory
+  - Response: `{ today: [...], upcoming: [...], allHighImpact: [...], lastUpdated }`
+- `POST /api/planner/generate` - Generate AI trading plan for a pair
+  - Body: `{ pair: string }`
+  - Response: `{ success, pair, plan, dataSources, economicEvents, meta }`
+- `GET /api/planner/status/:pair` - Check planner data sources status
+  - Response: `{ pair, status: { charts, geminiAI, finnhub }, requirements }`
 
 ## Data Accuracy Features
 - **Quote Validation**: All stock data validated for valid OHLC values and proper formatting

@@ -1147,6 +1147,356 @@ app.delete('/api/trades/:id', async (req, res) => {
   }
 });
 
+// ============================================================
+// FOREX FACTORY ECONOMIC CALENDAR SCRAPER
+// ============================================================
+
+async function fetchForexFactoryCalendar() {
+  try {
+    const response = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.xml');
+    const xmlText = await response.text();
+    
+    const events = [];
+    const eventRegex = /<event>([\s\S]*?)<\/event>/g;
+    let match;
+    
+    while ((match = eventRegex.exec(xmlText)) !== null) {
+      const eventXml = match[1];
+      
+      const getTagValue = (tag) => {
+        // Match CDATA content: <tag><![CDATA[value]]></tag>
+        const cdataMatch = eventXml.match(new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`));
+        if (cdataMatch) return cdataMatch[1].trim();
+        // Match simple content: <tag>value</tag>
+        const simpleMatch = eventXml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
+        if (simpleMatch) return simpleMatch[1].trim();
+        // Match empty tags: <tag />
+        return '';
+      };
+      
+      const impact = getTagValue('impact');
+      
+      // Only include High (red) and Medium (orange) impact events
+      if (impact === 'High' || impact === 'Medium') {
+        const event = {
+          title: getTagValue('title'),
+          country: getTagValue('country'),
+          date: getTagValue('date'),
+          time: getTagValue('time'),
+          impact: impact,
+          impactColor: impact === 'High' ? 'red' : 'orange',
+          forecast: getTagValue('forecast'),
+          previous: getTagValue('previous'),
+          actual: getTagValue('actual')
+        };
+        events.push(event);
+      }
+    }
+    
+    // Sort by date and time
+    events.sort((a, b) => {
+      const dateA = new Date(`${a.date} ${a.time || '00:00'}`);
+      const dateB = new Date(`${b.date} ${b.time || '00:00'}`);
+      return dateA - dateB;
+    });
+    
+    // Filter for today and upcoming events
+    const now = new Date();
+    
+    const todayEvents = events.filter(e => {
+      // Parse date in MM-DD-YYYY format
+      const parts = e.date.split('-');
+      if (parts.length === 3) {
+        const eventDate = new Date(parts[2], parseInt(parts[0]) - 1, parts[1]);
+        return eventDate.toDateString() === now.toDateString();
+      }
+      return false;
+    });
+    
+    const upcomingEvents = events.filter(e => {
+      const parts = e.date.split('-');
+      if (parts.length === 3) {
+        const eventDate = new Date(parts[2], parseInt(parts[0]) - 1, parts[1]);
+        return eventDate > now && eventDate <= new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+      }
+      return false;
+    });
+    
+    return {
+      today: todayEvents,
+      upcoming: upcomingEvents.slice(0, 15),
+      allHighImpact: events,
+      lastUpdated: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error('Error fetching Forex Factory calendar:', error);
+    return { today: [], upcoming: [], allHighImpact: [], error: error.message };
+  }
+}
+
+// API endpoint for economic calendar
+app.get('/api/economic-calendar', async (req, res) => {
+  try {
+    const calendar = await fetchForexFactoryCalendar();
+    res.json(calendar);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch economic calendar' });
+  }
+});
+
+// ============================================================
+// PLANNER - INTELLIGENT TRADING PLAN GENERATOR
+// ============================================================
+
+const PLANNER_PROMPT = `You are an expert trading planner for indices (US30, NAS100, SPX500). Your job is to synthesize multiple data sources into a clear, actionable trading plan for today.
+
+Given the following information:
+1. CHART ANALYSIS - Technical analysis of uploaded charts
+2. STOCK TRENDS - How major component stocks are performing
+3. MARKET NEWS - Recent news affecting the markets
+4. ECONOMIC CALENDAR - High-impact economic events (red/orange folder news from Forex Factory)
+
+Create a comprehensive but concise trading plan with the following structure:
+
+## TODAY'S TRADING PLAN - [PAIR]
+**Date:** [Today's date]
+**Overall Bias:** [BULLISH / BEARISH / NEUTRAL]
+**Confidence:** [LOW / MEDIUM / HIGH]
+
+### SUMMARY
+[2-3 sentences summarizing the overall market outlook]
+
+### KEY FACTORS
+1. **Technical:** [Brief summary of chart analysis]
+2. **Sentiment:** [Stock performance summary]
+3. **Fundamentals:** [News impact summary]
+4. **Events:** [High-impact events to watch]
+
+### ACTION PLAN
+- **Primary Direction:** [LONG / SHORT / WAIT]
+- **Key Levels to Watch:**
+  - Entry Zone: [price range]
+  - Stop Loss: [price]
+  - Take Profit 1: [price]
+  - Take Profit 2: [price]
+
+### RISK WARNINGS
+[List any major risks or events that could invalidate the plan]
+
+### SESSION TIMING
+[Best times to trade based on events and volatility]
+
+Be specific, actionable, and conservative with risk management.`;
+
+async function generateTradingPlan(pair) {
+  if (!geminiAI) {
+    throw new Error('GEMINI_API_KEY is required for the Planner');
+  }
+  
+  const normalizedPair = pair.toUpperCase();
+  const pairInfo = TRADING_PAIRS[normalizedPair];
+  
+  if (!pairInfo) {
+    throw new Error('Invalid trading pair');
+  }
+  
+  // Step 1: Gather all data sources in parallel
+  const startTime = Date.now();
+  
+  const [chartAnalyses, stockData, newsData, economicCalendar] = await Promise.all([
+    // Chart analysis
+    (async () => {
+      try {
+        const charts = chartStorage[normalizedPair];
+        if (!charts || Object.keys(charts).length === 0) {
+          return { status: 'no_charts', message: 'No charts uploaded for analysis' };
+        }
+        const analyses = await getSmartChartAnalysis(normalizedPair);
+        return { status: 'success', analyses };
+      } catch (e) {
+        return { status: 'error', message: e.message };
+      }
+    })(),
+    
+    // Stock data
+    (async () => {
+      try {
+        if (!FINNHUB_KEY) {
+          return { status: 'no_api_key', message: 'FINNHUB_API_KEY not configured' };
+        }
+        const quotes = await Promise.all(
+          pairInfo.majorStocks.slice(0, 5).map(stock => fetchStockQuote(stock.symbol))
+        );
+        const validQuotes = quotes.filter(q => q !== null);
+        const gainers = validQuotes.filter(q => q.percentChange > 0).length;
+        const losers = validQuotes.filter(q => q.percentChange < 0).length;
+        return { 
+          status: 'success', 
+          quotes: validQuotes,
+          summary: { gainers, losers, total: validQuotes.length }
+        };
+      } catch (e) {
+        return { status: 'error', message: e.message };
+      }
+    })(),
+    
+    // News data
+    (async () => {
+      try {
+        if (!FINNHUB_KEY) {
+          return { status: 'no_api_key', message: 'FINNHUB_API_KEY not configured' };
+        }
+        const topStock = pairInfo.majorStocks[0];
+        const news = await fetchCompanyNews(topStock.symbol, 3);
+        return { status: 'success', news: news.slice(0, 5) };
+      } catch (e) {
+        return { status: 'error', message: e.message };
+      }
+    })(),
+    
+    // Economic calendar
+    fetchForexFactoryCalendar()
+  ]);
+  
+  // Step 2: Build context for AI
+  let context = `Trading Pair: ${normalizedPair} (${pairInfo.name})\nDate: ${new Date().toLocaleDateString()}\n\n`;
+  
+  // Chart analysis context
+  context += '=== CHART ANALYSIS ===\n';
+  if (chartAnalyses.status === 'success' && chartAnalyses.analyses) {
+    chartAnalyses.analyses.forEach(a => {
+      context += `[${a.timeframe}] ${a.analysis.substring(0, 500)}...\n\n`;
+    });
+  } else {
+    context += `${chartAnalyses.message || 'No chart data available'}\n\n`;
+  }
+  
+  // Stock trends context
+  context += '=== MAJOR STOCKS PERFORMANCE ===\n';
+  if (stockData.status === 'success') {
+    context += `Summary: ${stockData.summary.gainers} gainers, ${stockData.summary.losers} losers out of ${stockData.summary.total} stocks\n`;
+    stockData.quotes.forEach(q => {
+      context += `- ${q.symbol}: $${q.currentPrice} (${q.percentChange >= 0 ? '+' : ''}${q.percentChange}%)\n`;
+    });
+  } else {
+    context += `${stockData.message || 'Stock data unavailable'}\n`;
+  }
+  context += '\n';
+  
+  // News context
+  context += '=== RECENT NEWS ===\n';
+  if (newsData.status === 'success' && newsData.news.length > 0) {
+    newsData.news.forEach(n => {
+      context += `- ${n.headline} (${n.source})\n`;
+    });
+  } else {
+    context += 'No recent news available\n';
+  }
+  context += '\n';
+  
+  // Economic calendar context
+  context += '=== ECONOMIC CALENDAR (HIGH IMPACT EVENTS) ===\n';
+  if (economicCalendar.today && economicCalendar.today.length > 0) {
+    context += 'TODAY:\n';
+    economicCalendar.today.forEach(e => {
+      context += `- [${e.impactColor.toUpperCase()}] ${e.time || 'All Day'} - ${e.country} - ${e.title}`;
+      if (e.forecast) context += ` (Forecast: ${e.forecast}, Previous: ${e.previous})`;
+      context += '\n';
+    });
+  } else {
+    context += 'No high-impact events today\n';
+  }
+  
+  if (economicCalendar.upcoming && economicCalendar.upcoming.length > 0) {
+    context += '\nUPCOMING THIS WEEK:\n';
+    economicCalendar.upcoming.slice(0, 5).forEach(e => {
+      context += `- [${e.impactColor.toUpperCase()}] ${e.date} ${e.time || ''} - ${e.country} - ${e.title}\n`;
+    });
+  }
+  
+  // Step 3: Generate plan with AI
+  try {
+    const response = await geminiAI.models.generateContent({
+      model: 'gemini-2.5-flash',
+      config: {
+        systemInstruction: PLANNER_PROMPT
+      },
+      contents: context
+    });
+    
+    const processingTime = Date.now() - startTime;
+    
+    return {
+      success: true,
+      pair: normalizedPair,
+      plan: response.text || '',
+      dataSources: {
+        chartAnalysis: chartAnalyses.status,
+        stockData: stockData.status,
+        news: newsData.status,
+        economicCalendar: economicCalendar.today?.length > 0 || economicCalendar.upcoming?.length > 0 ? 'success' : 'no_events'
+      },
+      economicEvents: {
+        today: economicCalendar.today || [],
+        upcoming: (economicCalendar.upcoming || []).slice(0, 5)
+      },
+      meta: {
+        processingTimeMs: processingTime,
+        generatedAt: new Date().toISOString()
+      }
+    };
+  } catch (error) {
+    console.error('Plan generation error:', error);
+    throw new Error('Failed to generate trading plan');
+  }
+}
+
+// Planner API endpoint
+app.post('/api/planner/generate', async (req, res) => {
+  try {
+    const { pair } = req.body;
+    
+    if (!pair || !TRADING_PAIRS[pair.toUpperCase()]) {
+      return res.status(400).json({ error: 'Invalid trading pair' });
+    }
+    
+    const plan = await generateTradingPlan(pair);
+    res.json(plan);
+  } catch (error) {
+    console.error('Planner error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate plan' });
+  }
+});
+
+// Get planner data sources status
+app.get('/api/planner/status/:pair', async (req, res) => {
+  const { pair } = req.params;
+  const normalizedPair = pair.toUpperCase();
+  const pairInfo = TRADING_PAIRS[normalizedPair];
+  
+  if (!pairInfo) {
+    return res.status(404).json({ error: 'Invalid trading pair' });
+  }
+  
+  const charts = chartStorage[normalizedPair] || {};
+  const chartCount = Object.values(charts).reduce((acc, arr) => acc + arr.length, 0);
+  
+  res.json({
+    pair: normalizedPair,
+    status: {
+      charts: chartCount > 0 ? 'ready' : 'missing',
+      chartCount,
+      geminiAI: geminiAI ? 'ready' : 'missing',
+      finnhub: FINNHUB_KEY ? 'ready' : 'missing'
+    },
+    requirements: {
+      charts: 'Upload at least one chart for the selected pair',
+      geminiAI: 'Add GEMINI_API_KEY in Secrets for AI analysis',
+      finnhub: 'Add FINNHUB_API_KEY in Secrets for stock data'
+    }
+  });
+});
+
 const distPath = path.join(__dirname, 'dist', 'index.html');
 if (fs.existsSync(distPath)) {
   app.get('/{*path}', (req, res) => {
