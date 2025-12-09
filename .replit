@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web"]
+modules = ["nodejs-20", "web", "postgresql-16"]
 [agent]
 expertMode = true
 integrations = ["javascript_openai:1.0.0"]
@@ -53,6 +53,10 @@ externalPort = 3003
 [[ports]]
 localPort = 43603
 externalPort = 4200
+
+[[ports]]
+localPort = 45805
+externalPort = 5000
 
 [deployment]
 deploymentTarget = "autoscale"
