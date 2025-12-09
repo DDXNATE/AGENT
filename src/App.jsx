@@ -1,10 +1,14 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
+import { useAuth } from './hooks/useAuth'
+import Calendar from './components/Calendar'
+import Landing from './components/Landing'
 
 const TRADING_PAIRS = ['US30', 'NAS100', 'SPX500'];
 const TIMEFRAMES = ['15m', '1hr', '4hr', 'daily'];
 
 function App() {
+  const { user, isLoading: authLoading, isAuthenticated, login, logout } = useAuth();
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -32,6 +36,9 @@ function App() {
   const [plannerLoading, setPlannerLoading] = useState(false)
   const [plannerStatus, setPlannerStatus] = useState(null)
   const [economicCalendar, setEconomicCalendar] = useState(null)
+  const [journalView, setJournalView] = useState('list')
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState(null)
+  const [selectedDateTrades, setSelectedDateTrades] = useState([])
   const [tradeForm, setTradeForm] = useState({
     pair: 'US30',
     direction: 'LONG',
@@ -58,6 +65,7 @@ function App() {
   }, [messages])
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     if (activeTab === 'stocks') {
       fetchStocks(selectedPair)
     } else if (activeTab === 'news') {
@@ -71,7 +79,12 @@ function App() {
       fetchPlannerStatus(selectedPair)
       fetchEconomicCalendar()
     }
-  }, [activeTab, selectedPair])
+  }, [activeTab, selectedPair, isAuthenticated])
+
+  const handleCalendarDateSelect = (date, dateTrades) => {
+    setSelectedCalendarDate(date);
+    setSelectedDateTrades(dateTrades);
+  };
 
   const fetchStocks = async (pair) => {
     setStocksLoading(true)
@@ -467,6 +480,21 @@ function App() {
     { label: 'Trading setup', cmd: `Hey Pippy, what trading setups do you see for ${selectedPair}?` }
   ]
 
+  if (authLoading) {
+    return (
+      <div className="app-container loading-screen">
+        <div className="loading-content">
+          <h1>Agent Pippy</h1>
+          <div className="loading-spinner">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Landing onLogin={login} />;
+  }
+
   return (
     <div className="app-container">
       <header className="header">
@@ -485,6 +513,13 @@ function App() {
                 {pair}
               </button>
             ))}
+          </div>
+          <div className="user-section">
+            {user?.profile_image_url && (
+              <img src={user.profile_image_url} alt="Profile" className="user-avatar" />
+            )}
+            <span className="user-name">{user?.first_name || user?.email || 'User'}</span>
+            <button onClick={logout} className="logout-btn">Logout</button>
           </div>
         </div>
       </header>
@@ -823,6 +858,20 @@ function App() {
           <div className="journal-section">
             <div className="journal-header">
               <h3>Trade Journal</h3>
+              <div className="journal-view-toggle">
+                <button 
+                  className={`view-btn ${journalView === 'list' ? 'active' : ''}`}
+                  onClick={() => setJournalView('list')}
+                >
+                  List View
+                </button>
+                <button 
+                  className={`view-btn ${journalView === 'calendar' ? 'active' : ''}`}
+                  onClick={() => setJournalView('calendar')}
+                >
+                  Calendar View
+                </button>
+              </div>
               <div className="journal-actions">
                 <button 
                   className="quick-log-btn"
@@ -1033,53 +1082,95 @@ function App() {
               </div>
             )}
 
-            <div className="trades-list">
-              {tradesLoading ? (
-                <div className="loading-spinner">Loading trades...</div>
-              ) : trades.length > 0 ? (
-                <table className="trades-table">
-                  <thead>
-                    <tr>
-                      <th>Pair</th>
-                      <th>Direction</th>
-                      <th>Entry</th>
-                      <th>Exit</th>
-                      <th>P&L</th>
-                      <th>Status</th>
-                      <th>Date</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trades.map(trade => (
-                      <tr key={trade.id} className={`trade-row ${trade.status.toLowerCase()}`}>
-                        <td>{trade.pair}</td>
-                        <td className={trade.direction === 'LONG' ? 'long' : 'short'}>{trade.direction}</td>
-                        <td>${parseFloat(trade.entry_price).toFixed(2)}</td>
-                        <td>{trade.exit_price ? `$${parseFloat(trade.exit_price).toFixed(2)}` : '-'}</td>
-                        <td className={parseFloat(trade.pnl) >= 0 ? 'positive' : 'negative'}>
-                          {trade.pnl ? `$${parseFloat(trade.pnl).toFixed(2)}` : '-'}
-                        </td>
-                        <td><span className={`status-badge ${trade.status.toLowerCase()}`}>{trade.status}</span></td>
-                        <td>{new Date(trade.entry_date).toLocaleDateString()}</td>
-                        <td className="actions">
-                          <button className="edit-trade-btn" onClick={() => handleEditTrade(trade)}>Edit</button>
-                          {trade.status === 'OPEN' && (
-                            <button className="close-trade-btn" onClick={() => setClosingTrade(trade)}>Close</button>
-                          )}
-                          <button className="delete-trade-btn" onClick={() => handleDeleteTrade(trade.id)}>Delete</button>
-                        </td>
+            {journalView === 'calendar' ? (
+              <div className="calendar-view">
+                <Calendar 
+                  trades={trades} 
+                  onDateSelect={handleCalendarDateSelect}
+                  selectedDate={selectedCalendarDate}
+                />
+                {selectedCalendarDate && (
+                  <div className="selected-date-trades">
+                    <h4>Trades on {selectedCalendarDate.toLocaleDateString()}</h4>
+                    {selectedDateTrades.length > 0 ? (
+                      <div className="date-trades-list">
+                        {selectedDateTrades.map(trade => (
+                          <div key={trade.id} className={`date-trade-card ${trade.status.toLowerCase()}`}>
+                            <div className="trade-header">
+                              <span className="trade-pair">{trade.pair}</span>
+                              <span className={`trade-direction ${trade.direction.toLowerCase()}`}>{trade.direction}</span>
+                              <span className={`trade-pnl ${parseFloat(trade.pnl) >= 0 ? 'positive' : 'negative'}`}>
+                                {trade.pnl ? `$${parseFloat(trade.pnl).toFixed(2)}` : '-'}
+                              </span>
+                            </div>
+                            <div className="trade-details">
+                              <span>Entry: ${parseFloat(trade.entry_price).toFixed(2)}</span>
+                              {trade.exit_price && <span>Exit: ${parseFloat(trade.exit_price).toFixed(2)}</span>}
+                              <span className={`status-badge ${trade.status.toLowerCase()}`}>{trade.status}</span>
+                            </div>
+                            {trade.notes && <p className="trade-notes">{trade.notes}</p>}
+                            <div className="trade-actions">
+                              <button onClick={() => handleEditTrade(trade)}>Edit</button>
+                              <button onClick={() => handleDeleteTrade(trade.id)}>Delete</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="no-trades-date">No trades on this date</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="trades-list">
+                {tradesLoading ? (
+                  <div className="loading-spinner">Loading trades...</div>
+                ) : trades.length > 0 ? (
+                  <table className="trades-table">
+                    <thead>
+                      <tr>
+                        <th>Pair</th>
+                        <th>Direction</th>
+                        <th>Entry</th>
+                        <th>Exit</th>
+                        <th>P&L</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="no-trades">
-                  <p>No trades logged yet. Start tracking your trades!</p>
-                  <button className="new-trade-btn" onClick={() => setShowTradeForm(true)}>+ Log Your First Trade</button>
-                </div>
-              )}
-            </div>
+                    </thead>
+                    <tbody>
+                      {trades.map(trade => (
+                        <tr key={trade.id} className={`trade-row ${trade.status.toLowerCase()}`}>
+                          <td>{trade.pair}</td>
+                          <td className={trade.direction === 'LONG' ? 'long' : 'short'}>{trade.direction}</td>
+                          <td>${parseFloat(trade.entry_price).toFixed(2)}</td>
+                          <td>{trade.exit_price ? `$${parseFloat(trade.exit_price).toFixed(2)}` : '-'}</td>
+                          <td className={parseFloat(trade.pnl) >= 0 ? 'positive' : 'negative'}>
+                            {trade.pnl ? `$${parseFloat(trade.pnl).toFixed(2)}` : '-'}
+                          </td>
+                          <td><span className={`status-badge ${trade.status.toLowerCase()}`}>{trade.status}</span></td>
+                          <td>{new Date(trade.entry_date).toLocaleDateString()}</td>
+                          <td className="actions">
+                            <button className="edit-trade-btn" onClick={() => handleEditTrade(trade)}>Edit</button>
+                            {trade.status === 'OPEN' && (
+                              <button className="close-trade-btn" onClick={() => setClosingTrade(trade)}>Close</button>
+                            )}
+                            <button className="delete-trade-btn" onClick={() => handleDeleteTrade(trade.id)}>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="no-trades">
+                    <p>No trades logged yet. Start tracking your trades!</p>
+                    <button className="new-trade-btn" onClick={() => setShowTradeForm(true)}>+ Log Your First Trade</button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

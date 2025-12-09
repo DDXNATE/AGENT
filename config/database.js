@@ -10,8 +10,26 @@ export async function initDatabase() {
   const client = await pool.connect();
   try {
     await client.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid VARCHAR PRIMARY KEY,
+        sess JSONB NOT NULL,
+        expire TIMESTAMP NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_session_expire ON sessions(expire);
+
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR PRIMARY KEY,
+        email VARCHAR UNIQUE,
+        first_name VARCHAR,
+        last_name VARCHAR,
+        profile_image_url VARCHAR,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS trades (
         id SERIAL PRIMARY KEY,
+        user_id VARCHAR REFERENCES users(id),
         pair VARCHAR(20) NOT NULL,
         direction VARCHAR(10) NOT NULL CHECK (direction IN ('LONG', 'SHORT')),
         entry_price DECIMAL(20, 5) NOT NULL,
@@ -36,6 +54,7 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_trades_pair ON trades(pair);
       CREATE INDEX IF NOT EXISTS idx_trades_status ON trades(status);
       CREATE INDEX IF NOT EXISTS idx_trades_entry_date ON trades(entry_date);
+      CREATE INDEX IF NOT EXISTS idx_trades_user_id ON trades(user_id);
     `);
     console.log('✓ Trade journal database initialized');
     return true;
@@ -47,25 +66,31 @@ export async function initDatabase() {
   }
 }
 
-export async function createTrade(trade) {
+export async function createTrade(trade, userId = null) {
   const {
     pair, direction, entry_price, stop_loss, take_profit,
     position_size, timeframe, setup_type, notes, chart_analysis
   } = trade;
   
   const result = await pool.query(
-    `INSERT INTO trades (pair, direction, entry_price, stop_loss, take_profit, position_size, timeframe, setup_type, notes, chart_analysis)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    `INSERT INTO trades (user_id, pair, direction, entry_price, stop_loss, take_profit, position_size, timeframe, setup_type, notes, chart_analysis)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
-    [pair, direction, entry_price, stop_loss, take_profit, position_size, timeframe, setup_type, notes, chart_analysis]
+    [userId, pair, direction, entry_price, stop_loss, take_profit, position_size, timeframe, setup_type, notes, chart_analysis]
   );
   return result.rows[0];
 }
 
-export async function closeTrade(id, exitData) {
+export async function closeTrade(id, exitData, userId = null) {
   const { exit_price, status, notes } = exitData;
   
-  const tradeResult = await pool.query('SELECT * FROM trades WHERE id = $1', [id]);
+  let tradeQuery = 'SELECT * FROM trades WHERE id = $1';
+  const tradeParams = [id];
+  if (userId) {
+    tradeQuery += ' AND user_id = $2';
+    tradeParams.push(userId);
+  }
+  const tradeResult = await pool.query(tradeQuery, tradeParams);
   if (tradeResult.rows.length === 0) {
     throw new Error('Trade not found');
   }
@@ -102,13 +127,18 @@ export async function closeTrade(id, exitData) {
   return result.rows[0];
 }
 
-export async function getTrades(filters = {}) {
+export async function getTrades(filters = {}, userId = null) {
   const { pair, status, limit = 50, offset = 0 } = filters;
   
   let query = 'SELECT * FROM trades WHERE 1=1';
   const params = [];
   let paramCount = 0;
   
+  if (userId) {
+    paramCount++;
+    query += ` AND user_id = $${paramCount}`;
+    params.push(userId);
+  }
   if (pair) {
     paramCount++;
     query += ` AND pair = $${paramCount}`;
@@ -132,12 +162,19 @@ export async function getTrades(filters = {}) {
   return result.rows;
 }
 
-export async function getTradeStats(pair = null) {
+export async function getTradeStats(pair = null, userId = null) {
   let whereClause = "WHERE status IN ('WIN', 'LOSS', 'BREAKEVEN')";
   const params = [];
+  let paramCount = 0;
   
+  if (userId) {
+    paramCount++;
+    whereClause += ` AND user_id = $${paramCount}`;
+    params.push(userId);
+  }
   if (pair) {
-    whereClause += ' AND pair = $1';
+    paramCount++;
+    whereClause += ` AND pair = $${paramCount}`;
     params.push(pair);
   }
   
@@ -208,12 +245,19 @@ export async function getTradeStats(pair = null) {
   };
 }
 
-export async function deleteTrade(id) {
-  const result = await pool.query('DELETE FROM trades WHERE id = $1 RETURNING *', [id]);
+export async function deleteTrade(id, userId = null) {
+  let query = 'DELETE FROM trades WHERE id = $1';
+  const params = [id];
+  if (userId) {
+    query += ' AND user_id = $2';
+    params.push(userId);
+  }
+  query += ' RETURNING *';
+  const result = await pool.query(query, params);
   return result.rows[0];
 }
 
-export async function updateTrade(id, updates) {
+export async function updateTrade(id, updates, userId = null) {
   const allowedFields = [
     'pair', 'direction', 'entry_price', 'exit_price', 
     'stop_loss', 'take_profit', 'position_size',
@@ -236,11 +280,18 @@ export async function updateTrade(id, updates) {
     throw new Error('No valid fields to update');
   }
   
-  paramCount++;
   setClauses.push(`updated_at = CURRENT_TIMESTAMP`);
+  paramCount++;
   params.push(id);
   
-  const query = `UPDATE trades SET ${setClauses.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+  let whereClause = `WHERE id = $${paramCount}`;
+  if (userId) {
+    paramCount++;
+    whereClause += ` AND user_id = $${paramCount}`;
+    params.push(userId);
+  }
+  
+  const query = `UPDATE trades SET ${setClauses.join(', ')} ${whereClause} RETURNING *`;
   const result = await pool.query(query, params);
   return result.rows[0];
 }

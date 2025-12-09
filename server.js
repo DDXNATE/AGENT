@@ -8,6 +8,7 @@ import multer from 'multer';
 import fs from 'fs';
 import { checkEnvironment, getEnvStatus } from './config/env.js';
 import { initDatabase, createTrade, closeTrade, getTrades, getTradeStats, deleteTrade, updateTrade } from './config/database.js';
+import { setupAuth, isAuthenticated } from './server/replitAuth.js';
 
 checkEnvironment();
 
@@ -17,8 +18,19 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
+
+async function initAuth() {
+  try {
+    await setupAuth(app);
+    console.log('✓ Authentication initialized');
+  } catch (error) {
+    console.error('Auth initialization error:', error);
+  }
+}
+
+initAuth();
 
 if (fs.existsSync(path.join(__dirname, 'dist'))) {
   app.use(express.static(path.join(__dirname, 'dist')));
@@ -1115,9 +1127,10 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-app.post('/api/trades', async (req, res) => {
+app.post('/api/trades', isAuthenticated, async (req, res) => {
   try {
-    const trade = await createTrade(req.body);
+    const userId = req.user?.claims?.sub;
+    const trade = await createTrade(req.body, userId);
     res.json({ success: true, trade });
   } catch (error) {
     console.error('Create trade error:', error);
@@ -1125,10 +1138,11 @@ app.post('/api/trades', async (req, res) => {
   }
 });
 
-app.get('/api/trades', async (req, res) => {
+app.get('/api/trades', isAuthenticated, async (req, res) => {
   try {
+    const userId = req.user?.claims?.sub;
     const { pair, status, limit, offset } = req.query;
-    const trades = await getTrades({ pair, status, limit: parseInt(limit) || 50, offset: parseInt(offset) || 0 });
+    const trades = await getTrades({ pair, status, limit: parseInt(limit) || 50, offset: parseInt(offset) || 0 }, userId);
     res.json({ trades });
   } catch (error) {
     console.error('Get trades error:', error);
@@ -1136,10 +1150,11 @@ app.get('/api/trades', async (req, res) => {
   }
 });
 
-app.get('/api/trades/stats', async (req, res) => {
+app.get('/api/trades/stats', isAuthenticated, async (req, res) => {
   try {
+    const userId = req.user?.claims?.sub;
     const { pair } = req.query;
-    const stats = await getTradeStats(pair);
+    const stats = await getTradeStats(pair, userId);
     res.json({ stats });
   } catch (error) {
     console.error('Get stats error:', error);
@@ -1147,10 +1162,11 @@ app.get('/api/trades/stats', async (req, res) => {
   }
 });
 
-app.put('/api/trades/:id/close', async (req, res) => {
+app.put('/api/trades/:id/close', isAuthenticated, async (req, res) => {
   try {
+    const userId = req.user?.claims?.sub;
     const { id } = req.params;
-    const trade = await closeTrade(id, req.body);
+    const trade = await closeTrade(id, req.body, userId);
     res.json({ success: true, trade });
   } catch (error) {
     console.error('Close trade error:', error);
@@ -1158,10 +1174,11 @@ app.put('/api/trades/:id/close', async (req, res) => {
   }
 });
 
-app.put('/api/trades/:id', async (req, res) => {
+app.put('/api/trades/:id', isAuthenticated, async (req, res) => {
   try {
+    const userId = req.user?.claims?.sub;
     const { id } = req.params;
-    const trade = await updateTrade(id, req.body);
+    const trade = await updateTrade(id, req.body, userId);
     res.json({ success: true, trade });
   } catch (error) {
     console.error('Update trade error:', error);
@@ -1169,10 +1186,11 @@ app.put('/api/trades/:id', async (req, res) => {
   }
 });
 
-app.delete('/api/trades/:id', async (req, res) => {
+app.delete('/api/trades/:id', isAuthenticated, async (req, res) => {
   try {
+    const userId = req.user?.claims?.sub;
     const { id } = req.params;
-    const trade = await deleteTrade(id);
+    const trade = await deleteTrade(id, userId);
     if (!trade) {
       return res.status(404).json({ error: 'Trade not found' });
     }
