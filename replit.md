@@ -4,7 +4,7 @@
 **When importing this project to a new Replit, do this first:**
 
 1. Click the **Secrets** tab (lock icon in left panel)
-2. Add these 4 API keys:
+2. Add these API keys:
 
 | Secret Name | Where to Get It |
 |------------|-----------------|
@@ -12,6 +12,9 @@
 | `GROQ_API_KEY` | https://console.groq.com/keys |
 | `FINNHUB_API_KEY` | https://finnhub.io/ |
 | `ALPHA_VANTAGE_API_KEY` | https://www.alphavantage.co/support/#api-key |
+| `SUPABASE_URL` | Your Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase Dashboard > Settings > API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase Dashboard > Settings > API |
 
 3. Click Run - the app will start with full functionality
 
@@ -120,6 +123,7 @@ The Planner is an intelligent trading plan generator that synthesizes multiple d
 ## Tech Stack
 - **Frontend**: React + Vite
 - **Backend**: Express.js with Multer for file uploads
+- **Database**: Supabase (PostgreSQL) for trade journal persistence
 - **AI Models**: 
   - Gemini 2.5 Flash (Google)
   - Llama 3.1 8B Instant (Groq)
@@ -148,6 +152,11 @@ Store these in Replit Secrets (lock icon in left panel):
 - `GROQ_API_KEY` - Groq AI (https://console.groq.com/keys)
 - `FINNHUB_API_KEY` - Real-time stock data (https://finnhub.io/)
 - `ALPHA_VANTAGE_API_KEY` - Financial data (https://www.alphavantage.co/support/#api-key)
+
+### Supabase Database (for Trade Journal)
+- `SUPABASE_URL` - Your Supabase project URL
+- `SUPABASE_ANON_KEY` - Supabase publishable/anon key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (keep secret!)
 
 ### Why Secrets Persist Through GitHub Updates
 Replit Secrets are stored separately from your code in Replit's secure vault. When you:
