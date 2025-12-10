@@ -8,7 +8,6 @@ import multer from 'multer';
 import fs from 'fs';
 import { checkEnvironment, getEnvStatus } from './config/env.js';
 import { initDatabase, createTrade, closeTrade, getTrades, getTradeStats, deleteTrade, updateTrade } from './config/database.js';
-import { setupAuth, isAuthenticated } from './server/replitAuth.js';
 
 checkEnvironment();
 
@@ -20,17 +19,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
-
-async function initAuth() {
-  try {
-    await setupAuth(app);
-    console.log('✓ Authentication initialized');
-  } catch (error) {
-    console.error('Auth initialization error:', error);
-  }
-}
-
-initAuth();
 
 if (fs.existsSync(path.join(__dirname, 'dist'))) {
   app.use(express.static(path.join(__dirname, 'dist')));
@@ -1125,7 +1113,7 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
-app.post('/api/trades', isAuthenticated, async (req, res) => {
+app.post('/api/trades', async (req, res) => {
   try {
     const userId = req.user?.claims?.sub;
     const trade = await createTrade(req.body, userId);
@@ -1136,7 +1124,7 @@ app.post('/api/trades', isAuthenticated, async (req, res) => {
   }
 });
 
-app.get('/api/trades', isAuthenticated, async (req, res) => {
+app.get('/api/trades', async (req, res) => {
   try {
     const userId = req.user?.claims?.sub;
     const { pair, status, limit, offset } = req.query;
@@ -1148,7 +1136,7 @@ app.get('/api/trades', isAuthenticated, async (req, res) => {
   }
 });
 
-app.get('/api/trades/stats', isAuthenticated, async (req, res) => {
+app.get('/api/trades/stats', async (req, res) => {
   try {
     const userId = req.user?.claims?.sub;
     const { pair } = req.query;
@@ -1160,7 +1148,7 @@ app.get('/api/trades/stats', isAuthenticated, async (req, res) => {
   }
 });
 
-app.put('/api/trades/:id/close', isAuthenticated, async (req, res) => {
+app.put('/api/trades/:id/close', async (req, res) => {
   try {
     const userId = req.user?.claims?.sub;
     const { id } = req.params;
@@ -1172,7 +1160,7 @@ app.put('/api/trades/:id/close', isAuthenticated, async (req, res) => {
   }
 });
 
-app.put('/api/trades/:id', isAuthenticated, async (req, res) => {
+app.put('/api/trades/:id', async (req, res) => {
   try {
     const userId = req.user?.claims?.sub;
     const { id } = req.params;
@@ -1184,7 +1172,7 @@ app.put('/api/trades/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-app.delete('/api/trades/:id', isAuthenticated, async (req, res) => {
+app.delete('/api/trades/:id', async (req, res) => {
   try {
     const userId = req.user?.claims?.sub;
     const { id } = req.params;

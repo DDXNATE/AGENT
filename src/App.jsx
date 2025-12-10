@@ -1,14 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
-import { useAuth } from './hooks/useAuth'
 import Calendar from './components/Calendar'
-import Landing from './components/Landing'
 
 const TRADING_PAIRS = ['US30', 'NAS100', 'SPX500'];
 const TIMEFRAMES = ['15m', '1hr', '4hr', 'daily'];
 
 function App() {
-  const { user, isLoading: authLoading, isAuthenticated, login, logout } = useAuth();
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -65,7 +62,6 @@ function App() {
   }, [messages])
 
   useEffect(() => {
-    if (!isAuthenticated) return;
     if (activeTab === 'stocks') {
       fetchStocks(selectedPair)
     } else if (activeTab === 'news') {
@@ -79,7 +75,7 @@ function App() {
       fetchPlannerStatus(selectedPair)
       fetchEconomicCalendar()
     }
-  }, [activeTab, selectedPair, isAuthenticated])
+  }, [activeTab, selectedPair])
 
   const handleCalendarDateSelect = (date, dateTrades) => {
     setSelectedCalendarDate(date);
@@ -480,21 +476,6 @@ function App() {
     { label: 'Trading setup', cmd: `Hey Pippy, what trading setups do you see for ${selectedPair}?` }
   ]
 
-  if (authLoading) {
-    return (
-      <div className="app-container loading-screen">
-        <div className="loading-content">
-          <h1>Agent Pippy</h1>
-          <div className="loading-spinner">Loading...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Landing onLogin={login} />;
-  }
-
   return (
     <div className="app-container">
       <header className="header">
@@ -513,13 +494,6 @@ function App() {
                 {pair}
               </button>
             ))}
-          </div>
-          <div className="user-section">
-            {user?.profile_image_url && (
-              <img src={user.profile_image_url} alt="Profile" className="user-avatar" />
-            )}
-            <span className="user-name">{user?.first_name || user?.email || 'User'}</span>
-            <button onClick={logout} className="logout-btn">Logout</button>
           </div>
         </div>
       </header>
