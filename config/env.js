@@ -69,7 +69,7 @@ function checkEnvironment() {
     missing,
     available,
     isFullyConfigured: missing.length === 0,
-    hasAI: available.includes('GEMINI_API_KEY') && available.includes('GROQ_API_KEY'),
+    hasAI: available.includes('GROQ_API_KEY'),
     hasMarketData: available.includes('FINNHUB_API_KEY')
   };
 }

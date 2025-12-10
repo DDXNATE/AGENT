@@ -558,8 +558,8 @@ async function callGemini(prompt, systemPrompt = '') {
 }
 
 async function analyzeChartImage(imagePath, pair, timeframe, analysisType = 'full') {
-  if (!geminiAI) {
-    throw new Error('Gemini API not configured for image analysis');
+  if (!groqAI) {
+    throw new Error('Groq API not configured for image analysis');
   }
   
   const absolutePath = path.join(__dirname, imagePath.startsWith('/') ? imagePath.slice(1) : imagePath);
@@ -580,30 +580,31 @@ Analysis Type: ${analysisType === 'quick' ? 'Quick scan' : 'Full detailed analys
 ${analysisType === 'quick' ? FAST_ANALYSIS_PROMPT : CHART_ANALYSIS_PROMPT}`;
 
   try {
-    const response = await geminiAI.models.generateContent({
-      model: 'gemini-2.5-flash',
-      config: {
-        systemInstruction: SYSTEM_PROMPT
-      },
-      contents: [
+    const response = await groqAI.chat.completions.create({
+      model: 'llama-4-maverick-17b-128e-instruct',
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
         {
-          parts: [
+          role: 'user',
+          content: [
             {
-              inlineData: {
-                mimeType: mimeType,
-                data: base64Image
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType};base64,${base64Image}`
               }
             },
             {
+              type: 'text',
               text: contextPrompt
             }
           ]
         }
-      ]
+      ],
+      max_tokens: 2000
     });
     
     return {
-      analysis: response.text || '',
+      analysis: response.choices[0]?.message?.content || '',
       pair,
       timeframe,
       analysisType,
@@ -674,7 +675,7 @@ async function getChartsContext(pair = null, includeAnalysis = true) {
           const latest = charts[charts.length - 1];
           context += `\n- ${p} ${timeframe} chart: uploaded ${latest.uploadedAt}`;
           
-          if (includeAnalysis && geminiAI) {
+          if (includeAnalysis && groqAI) {
             try {
               const analysis = await getSmartChartAnalysis(p, timeframe);
               if (analysis && analysis.length > 0) {
@@ -993,9 +994,9 @@ ${groqPerspective}`;
 }
 
 app.post('/api/analyze-chart', async (req, res) => {
-  if (!geminiAI) {
+  if (!groqAI) {
     return res.status(503).json({ 
-      error: 'GEMINI_API_KEY is required for chart analysis. Please add it to enable AI vision analysis.' 
+      error: 'GROQ_API_KEY is required for chart analysis. Please add it to enable AI vision analysis.' 
     });
   }
 
@@ -1047,8 +1048,8 @@ app.post('/api/analyze-chart', async (req, res) => {
 });
 
 app.post('/api/quick-analysis', async (req, res) => {
-  if (!geminiAI) {
-    return res.status(503).json({ error: 'GEMINI_API_KEY required for analysis' });
+  if (!groqAI) {
+    return res.status(503).json({ error: 'GROQ_API_KEY required for analysis' });
   }
 
   try {
@@ -1084,9 +1085,9 @@ app.post('/api/chat', async (req, res) => {
     
     // Check if this is a trade journal command
     if (isTradeJournalCommand(message)) {
-      if (!geminiAI) {
+      if (!groqAI) {
         return res.status(503).json({ 
-          error: 'GEMINI_API_KEY is required for AI trade journaling. Please add it in Secrets.' 
+          error: 'GROQ_API_KEY is required for AI trade journaling. Please add it in Secrets.' 
         });
       }
       
@@ -1106,13 +1107,10 @@ app.post('/api/chat', async (req, res) => {
       }
     }
     
-    // Regular chat - needs both AI models
-    if (!geminiAI || !groqAI) {
-      const missing = [];
-      if (!geminiAI) missing.push('GEMINI_API_KEY');
-      if (!groqAI) missing.push('GROQ_API_KEY');
+    // Regular chat - needs Groq AI
+    if (!groqAI) {
       return res.status(503).json({ 
-        error: `Missing API keys: ${missing.join(', ')}. Please add them to enable the Chain of Debate system.` 
+        error: 'GROQ_API_KEY is required for the chat system. Please add it in Secrets.' 
       });
     }
     
@@ -1343,8 +1341,8 @@ Create a comprehensive but concise trading plan with the following structure:
 Be specific, actionable, and conservative with risk management.`;
 
 async function generateTradingPlan(pair) {
-  if (!geminiAI) {
-    throw new Error('GEMINI_API_KEY is required for the Planner');
+  if (!groqAI) {
+    throw new Error('GROQ_API_KEY is required for the Planner');
   }
   
   const normalizedPair = pair.toUpperCase();
@@ -1470,12 +1468,13 @@ async function generateTradingPlan(pair) {
   
   // Step 3: Generate plan with AI
   try {
-    const response = await geminiAI.models.generateContent({
-      model: 'gemini-2.5-flash',
-      config: {
-        systemInstruction: PLANNER_PROMPT
-      },
-      contents: context
+    const response = await groqAI.chat.completions.create({
+      model: 'llama-3.1-70b-versatile',
+      messages: [
+        { role: 'system', content: PLANNER_PROMPT },
+        { role: 'user', content: context }
+      ],
+      max_tokens: 2000
     });
     
     const processingTime = Date.now() - startTime;
@@ -1483,7 +1482,7 @@ async function generateTradingPlan(pair) {
     return {
       success: true,
       pair: normalizedPair,
-      plan: response.text || '',
+      plan: response.choices[0]?.message?.content || '',
       dataSources: {
         chartAnalysis: chartAnalyses.status,
         stockData: stockData.status,
@@ -1540,12 +1539,12 @@ app.get('/api/planner/status/:pair', async (req, res) => {
     status: {
       charts: chartCount > 0 ? 'ready' : 'missing',
       chartCount,
-      geminiAI: geminiAI ? 'ready' : 'missing',
+      groqAI: groqAI ? 'ready' : 'missing',
       finnhub: FINNHUB_KEY ? 'ready' : 'missing'
     },
     requirements: {
       charts: 'Upload at least one chart for the selected pair',
-      geminiAI: 'Add GEMINI_API_KEY in Secrets for AI analysis',
+      groqAI: 'Add GROQ_API_KEY in Secrets for AI analysis',
       finnhub: 'Add FINNHUB_API_KEY in Secrets for stock data'
     }
   });
