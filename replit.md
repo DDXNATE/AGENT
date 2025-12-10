@@ -1,5 +1,24 @@
 # Agent Pippy
 
+## Quick Setup (2 minutes)
+**When importing this project to a new Replit, do this first:**
+
+1. Click the **Secrets** tab (lock icon in left panel)
+2. Add these 4 API keys:
+
+| Secret Name | Where to Get It |
+|------------|-----------------|
+| `GEMINI_API_KEY` | https://aistudio.google.com/apikey |
+| `GROQ_API_KEY` | https://console.groq.com/keys |
+| `FINNHUB_API_KEY` | https://finnhub.io/ |
+| `ALPHA_VANTAGE_API_KEY` | https://www.alphavantage.co/support/#api-key |
+
+3. Click Run - the app will start with full functionality
+
+See `.env.template` for a reference template with all required keys.
+
+---
+
 ## Overview
 Agent Pippy is an AI-powered trading assistant using a Chain of Debate (CoD) multi-AI architecture. It specializes in analyzing SPX 500, NAS 100, and US30 indices with real-time stock data, news integration, and chart analysis capabilities.
 
