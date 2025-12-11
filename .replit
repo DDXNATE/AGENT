@@ -42,34 +42,6 @@ externalPort = 80
 localPort = 5001
 externalPort = 3002
 
-[[ports]]
-localPort = 35401
-externalPort = 6000
-
-[[ports]]
-localPort = 37177
-externalPort = 3000
-
-[[ports]]
-localPort = 41599
-externalPort = 6800
-
-[[ports]]
-localPort = 41807
-externalPort = 3003
-
-[[ports]]
-localPort = 42885
-externalPort = 5173
-
-[[ports]]
-localPort = 43603
-externalPort = 4200
-
-[[ports]]
-localPort = 45805
-externalPort = 5000
-
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "PORT=5000 node server.js"]
