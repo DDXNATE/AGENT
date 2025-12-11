@@ -6,6 +6,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import fs from 'fs';
+import YahooFinance from 'yahoo-finance2';
+const yahooFinance = new YahooFinance();
 import { checkEnvironment, getEnvStatus } from './config/env.js';
 import { initDatabase, createTrade, closeTrade, getTrades, getTradeStats, deleteTrade, updateTrade } from './config/database.js';
 
@@ -66,6 +68,7 @@ const TRADING_PAIRS = {
     name: 'Dow Jones Industrial Average (US30)',
     symbol: 'DJI',
     finnhubSymbol: '^DJI',
+    yahooSymbol: '^DJI',
     majorStocks: [
       { symbol: 'AAPL', name: 'Apple Inc.' },
       { symbol: 'MSFT', name: 'Microsoft Corp.' },
@@ -83,6 +86,7 @@ const TRADING_PAIRS = {
     name: 'NASDAQ 100 (NAS100)',
     symbol: 'NDX',
     finnhubSymbol: '^NDX',
+    yahooSymbol: '^NDX',
     majorStocks: [
       { symbol: 'AAPL', name: 'Apple Inc.' },
       { symbol: 'MSFT', name: 'Microsoft Corp.' },
@@ -100,6 +104,7 @@ const TRADING_PAIRS = {
     name: 'S&P 500 (SPX500)',
     symbol: 'SPX',
     finnhubSymbol: '^GSPC',
+    yahooSymbol: '^GSPC',
     majorStocks: [
       { symbol: 'AAPL', name: 'Apple Inc.' },
       { symbol: 'MSFT', name: 'Microsoft Corp.' },
@@ -114,6 +119,58 @@ const TRADING_PAIRS = {
     ]
   }
 };
+
+const indexCache = new Map();
+const INDEX_CACHE_TTL = 60000;
+
+async function fetchIndexPrice(pair) {
+  const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
+  if (!pairInfo) return null;
+  
+  const cacheKey = `index_${pair}`;
+  const cached = indexCache.get(cacheKey);
+  
+  if (cached && (Date.now() - cached.fetchedAt) < INDEX_CACHE_TTL) {
+    return { ...cached.data, fromCache: true, cacheAge: Date.now() - cached.fetchedAt };
+  }
+  
+  try {
+    const quote = await yahooFinance.quote(pairInfo.yahooSymbol);
+    
+    if (!quote || !quote.regularMarketPrice) {
+      console.warn(`No quote data for ${pairInfo.yahooSymbol}`);
+      if (cached) {
+        return { ...cached.data, fromCache: true, stale: true };
+      }
+      return null;
+    }
+    
+    const indexData = {
+      pair: pair.toUpperCase(),
+      name: pairInfo.name,
+      symbol: pairInfo.yahooSymbol,
+      currentPrice: parseFloat(quote.regularMarketPrice.toFixed(2)),
+      change: parseFloat((quote.regularMarketChange || 0).toFixed(2)),
+      percentChange: parseFloat((quote.regularMarketChangePercent || 0).toFixed(2)),
+      high: parseFloat((quote.regularMarketDayHigh || quote.regularMarketPrice).toFixed(2)),
+      low: parseFloat((quote.regularMarketDayLow || quote.regularMarketPrice).toFixed(2)),
+      open: parseFloat((quote.regularMarketOpen || quote.regularMarketPrice).toFixed(2)),
+      previousClose: parseFloat((quote.regularMarketPreviousClose || quote.regularMarketPrice).toFixed(2)),
+      marketStatus: getMarketStatus(),
+      fetchedAt: Date.now(),
+      fromCache: false
+    };
+    
+    indexCache.set(cacheKey, { data: indexData, fetchedAt: Date.now() });
+    return indexData;
+  } catch (error) {
+    console.error(`Error fetching index price for ${pair}:`, error.message);
+    if (cached) {
+      return { ...cached.data, fromCache: true, stale: true, error: error.message };
+    }
+    return null;
+  }
+}
 
 const chartStorage = {};
 
@@ -440,6 +497,54 @@ app.get('/api/market-status', (req, res) => {
   res.json(getMarketStatus());
 });
 
+app.get('/api/index/:pair', async (req, res) => {
+  const { pair } = req.params;
+  const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
+  
+  if (!pairInfo) {
+    return res.status(404).json({ error: 'Trading pair not found' });
+  }
+  
+  try {
+    const indexData = await fetchIndexPrice(pair);
+    
+    if (!indexData) {
+      return res.status(503).json({ 
+        error: 'Unable to fetch index price. Please try again.',
+        pair: pair.toUpperCase()
+      });
+    }
+    
+    res.json(indexData);
+  } catch (error) {
+    console.error('Error fetching index:', error);
+    res.status(500).json({ error: 'Failed to fetch index data' });
+  }
+});
+
+app.get('/api/indices', async (req, res) => {
+  try {
+    const indices = await Promise.all(
+      Object.keys(TRADING_PAIRS).map(pair => fetchIndexPrice(pair))
+    );
+    
+    const validIndices = indices.filter(idx => idx !== null);
+    
+    res.json({
+      indices: validIndices,
+      meta: {
+        marketStatus: getMarketStatus(),
+        lastUpdated: new Date().toISOString(),
+        availableIndices: validIndices.length,
+        totalIndices: Object.keys(TRADING_PAIRS).length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all indices:', error);
+    res.status(500).json({ error: 'Failed to fetch indices data' });
+  }
+});
+
 app.get('/api/stocks/:pair', async (req, res) => {
   const { pair } = req.params;
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
@@ -685,16 +790,26 @@ async function getMarketContext(pair) {
   let context = '';
   const pairInfo = TRADING_PAIRS[pair?.toUpperCase()];
   
-  if (pairInfo && FINNHUB_KEY) {
+  if (pairInfo) {
     try {
-      const topStocks = pairInfo.majorStocks.slice(0, 5);
-      const quotes = await Promise.all(topStocks.map(s => fetchStockQuote(s.symbol)));
+      const indexData = await fetchIndexPrice(pair);
+      if (indexData && indexData.currentPrice) {
+        const changeSymbol = indexData.change >= 0 ? '+' : '';
+        context += `\n\n**CURRENT ${pair.toUpperCase()} INDEX PRICE: ${indexData.currentPrice.toFixed(2)}** (${changeSymbol}${indexData.change.toFixed(2)}, ${changeSymbol}${indexData.percentChange.toFixed(2)}%)`;
+        context += `\nDay Range: ${indexData.low.toFixed(2)} - ${indexData.high.toFixed(2)}`;
+        context += `\nOpen: ${indexData.open.toFixed(2)} | Previous Close: ${indexData.previousClose.toFixed(2)}`;
+      }
       
-      context += `\n\nReal-time ${pairInfo.name} Major Stocks:`;
-      for (const quote of quotes) {
-        if (quote && quote.currentPrice) {
-          const changeSymbol = quote.change >= 0 ? '+' : '';
-          context += `\n- ${quote.symbol}: $${quote.currentPrice.toFixed(2)} (${changeSymbol}${quote.percentChange?.toFixed(2)}%)`;
+      if (FINNHUB_KEY) {
+        const topStocks = pairInfo.majorStocks.slice(0, 5);
+        const quotes = await Promise.all(topStocks.map(s => fetchStockQuote(s.symbol)));
+        
+        context += `\n\nTop ${pairInfo.name} Component Stocks:`;
+        for (const quote of quotes) {
+          if (quote && quote.currentPrice) {
+            const changeSymbol = quote.change >= 0 ? '+' : '';
+            context += `\n- ${quote.symbol}: $${quote.currentPrice.toFixed(2)} (${changeSymbol}${quote.percentChange?.toFixed(2)}%)`;
+          }
         }
       }
     } catch (error) {
