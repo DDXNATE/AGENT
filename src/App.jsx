@@ -1190,7 +1190,7 @@ function App() {
                 <div className="status-icon">V</div>
                 <div className="status-info">
                   <h4>Economic Calendar</h4>
-                  <p>Forex Factory</p>
+                  <p>Coming Soon</p>
                 </div>
               </div>
             </div>

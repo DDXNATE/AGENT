@@ -33,7 +33,7 @@ Agent Pippy is an AI-powered trading assistant using a Chain of Debate (CoD) mul
 - **AI Trade Journaling**: Tell Pippy to log trades via chat - automatically parses pair, direction, P&L
 - **Trade Journal**: Full trade tracking with stats, win rate, P&L tracking, and edit capabilities
 - **AI Trading Planner**: Comprehensive daily trading plan combining charts, stocks, news & economic calendar
-- **Economic Calendar**: Live red/orange folder high-impact news from Forex Factory
+- **Economic Calendar**: Coming soon
 - **3 Trading Pairs**: US30, NAS100, SPX500
 
 ## AI Trade Journaling (NEW)
@@ -69,7 +69,7 @@ The Planner is an intelligent trading plan generator that synthesizes multiple d
 1. **Chart Analysis**: Technical analysis of your uploaded charts
 2. **Stock Trends**: Performance of major component stocks
 3. **Market News**: Recent news affecting the markets
-4. **Economic Calendar**: High-impact (red folder) and medium-impact (orange folder) events from Forex Factory
+4. **Economic Calendar**: High-impact economic events (coming soon)
 
 ### How to Use:
 1. Go to the **Planner** tab
@@ -87,10 +87,9 @@ The Planner is an intelligent trading plan generator that synthesizes multiple d
 - **Session Timing**: Best times to trade based on events
 
 ### Economic Calendar Features:
-- Live data from Forex Factory
-- Filters for HIGH (red folder) and MEDIUM (orange folder) impact events
+- Economic calendar integration coming soon
+- Will display HIGH and MEDIUM impact events
 - Today's events and upcoming week events
-- Forecast vs previous values displayed
 
 ## AI Vision Chart Analysis (NEW)
 
@@ -204,9 +203,7 @@ Your secrets remain intact because they are tied to your Replit account/project,
 - `GET /api/news/:pair` - Get latest news for stocks in a trading pair
 - `GET /api/market-news` - Get general market news
 
-### Planner & Economic Calendar
-- `GET /api/economic-calendar` - Get high-impact economic events from Forex Factory
-  - Response: `{ today: [...], upcoming: [...], allHighImpact: [...], lastUpdated }`
+### Planner
 - `POST /api/planner/generate` - Generate AI trading plan for a pair
   - Body: `{ pair: string }`
   - Response: `{ success, pair, plan, dataSources, economicEvents, meta }`

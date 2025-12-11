@@ -1303,103 +1303,6 @@ app.delete('/api/trades/:id', async (req, res) => {
 });
 
 // ============================================================
-// FOREX FACTORY ECONOMIC CALENDAR SCRAPER
-// ============================================================
-
-async function fetchForexFactoryCalendar() {
-  try {
-    const response = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.xml');
-    const xmlText = await response.text();
-    
-    const events = [];
-    const eventRegex = /<event>([\s\S]*?)<\/event>/g;
-    let match;
-    
-    while ((match = eventRegex.exec(xmlText)) !== null) {
-      const eventXml = match[1];
-      
-      const getTagValue = (tag) => {
-        // Match CDATA content: <tag><![CDATA[value]]></tag>
-        const cdataMatch = eventXml.match(new RegExp(`<${tag}><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tag}>`));
-        if (cdataMatch) return cdataMatch[1].trim();
-        // Match simple content: <tag>value</tag>
-        const simpleMatch = eventXml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
-        if (simpleMatch) return simpleMatch[1].trim();
-        // Match empty tags: <tag />
-        return '';
-      };
-      
-      const impact = getTagValue('impact');
-      
-      // Only include High (red) and Medium (orange) impact events
-      if (impact === 'High' || impact === 'Medium') {
-        const event = {
-          title: getTagValue('title'),
-          country: getTagValue('country'),
-          date: getTagValue('date'),
-          time: getTagValue('time'),
-          impact: impact,
-          impactColor: impact === 'High' ? 'red' : 'orange',
-          forecast: getTagValue('forecast'),
-          previous: getTagValue('previous'),
-          actual: getTagValue('actual')
-        };
-        events.push(event);
-      }
-    }
-    
-    // Sort by date and time
-    events.sort((a, b) => {
-      const dateA = new Date(`${a.date} ${a.time || '00:00'}`);
-      const dateB = new Date(`${b.date} ${b.time || '00:00'}`);
-      return dateA - dateB;
-    });
-    
-    // Filter for today and upcoming events
-    const now = new Date();
-    
-    const todayEvents = events.filter(e => {
-      // Parse date in MM-DD-YYYY format
-      const parts = e.date.split('-');
-      if (parts.length === 3) {
-        const eventDate = new Date(parts[2], parseInt(parts[0]) - 1, parts[1]);
-        return eventDate.toDateString() === now.toDateString();
-      }
-      return false;
-    });
-    
-    const upcomingEvents = events.filter(e => {
-      const parts = e.date.split('-');
-      if (parts.length === 3) {
-        const eventDate = new Date(parts[2], parseInt(parts[0]) - 1, parts[1]);
-        return eventDate > now && eventDate <= new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-      }
-      return false;
-    });
-    
-    return {
-      today: todayEvents,
-      upcoming: upcomingEvents.slice(0, 15),
-      allHighImpact: events,
-      lastUpdated: new Date().toISOString()
-    };
-  } catch (error) {
-    console.error('Error fetching Forex Factory calendar:', error);
-    return { today: [], upcoming: [], allHighImpact: [], error: error.message };
-  }
-}
-
-// API endpoint for economic calendar
-app.get('/api/economic-calendar', async (req, res) => {
-  try {
-    const calendar = await fetchForexFactoryCalendar();
-    res.json(calendar);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch economic calendar' });
-  }
-});
-
-// ============================================================
 // PLANNER - INTELLIGENT TRADING PLAN GENERATOR
 // ============================================================
 
@@ -1409,7 +1312,7 @@ Given the following information:
 1. CHART ANALYSIS - Technical analysis of uploaded charts
 2. STOCK TRENDS - How major component stocks are performing
 3. MARKET NEWS - Recent news affecting the markets
-4. ECONOMIC CALENDAR - High-impact economic events (red/orange folder news from Forex Factory)
+4. ECONOMIC CALENDAR - High-impact economic events
 
 Create a comprehensive but concise trading plan with the following structure:
 
@@ -1509,8 +1412,8 @@ async function generateTradingPlan(pair) {
       }
     })(),
     
-    // Economic calendar
-    fetchForexFactoryCalendar()
+    // Economic calendar placeholder
+    Promise.resolve({ today: [], upcoming: [], allHighImpact: [] })
   ]);
   
   // Step 2: Build context for AI
