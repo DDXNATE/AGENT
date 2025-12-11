@@ -32,7 +32,6 @@ function App() {
   const [plannerData, setPlannerData] = useState(null)
   const [plannerLoading, setPlannerLoading] = useState(false)
   const [plannerStatus, setPlannerStatus] = useState(null)
-  const [economicCalendar, setEconomicCalendar] = useState(null)
   const [journalView, setJournalView] = useState('list')
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(null)
   const [selectedDateTrades, setSelectedDateTrades] = useState([])
@@ -73,7 +72,6 @@ function App() {
       fetchTradeStats()
     } else if (activeTab === 'planner') {
       fetchPlannerStatus(selectedPair)
-      fetchEconomicCalendar()
     }
   }, [activeTab, selectedPair])
 
@@ -182,16 +180,6 @@ function App() {
       setPlannerStatus(data)
     } catch (error) {
       console.error('Error fetching planner status:', error)
-    }
-  }
-
-  const fetchEconomicCalendar = async () => {
-    try {
-      const response = await fetch('/api/economic-calendar')
-      const data = await response.json()
-      setEconomicCalendar(data)
-    } catch (error) {
-      console.error('Error fetching economic calendar:', error)
     }
   }
 
@@ -1186,63 +1174,9 @@ function App() {
                   <p>{plannerStatus?.status?.finnhub === 'ready' ? 'Ready' : 'API key needed'}</p>
                 </div>
               </div>
-              <div className="status-card ready">
-                <div className="status-icon">V</div>
-                <div className="status-info">
-                  <h4>Economic Calendar</h4>
-                  <p>Coming Soon</p>
-                </div>
-              </div>
             </div>
 
             <div className="planner-content-grid">
-              <div className="economic-calendar-section">
-                <h3>Economic Calendar (High Impact)</h3>
-                {economicCalendar ? (
-                  <div className="calendar-events">
-                    {economicCalendar.today?.length > 0 && (
-                      <div className="today-events">
-                        <h4>Today's Events</h4>
-                        {economicCalendar.today.map((event, i) => (
-                          <div key={i} className={`event-item ${event.impactColor}`}>
-                            <span className={`impact-badge ${event.impactColor}`}>
-                              {event.impact === 'High' ? 'HIGH' : 'MED'}
-                            </span>
-                            <span className="event-time">{event.time || 'All Day'}</span>
-                            <span className="event-country">{event.country}</span>
-                            <span className="event-title">{event.title}</span>
-                            {event.forecast && (
-                              <span className="event-data">F: {event.forecast} | P: {event.previous}</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {(!economicCalendar.today || economicCalendar.today.length === 0) && (
-                      <p className="no-events">No high-impact events today</p>
-                    )}
-                    {economicCalendar.upcoming?.length > 0 && (
-                      <div className="upcoming-events">
-                        <h4>Upcoming This Week</h4>
-                        {economicCalendar.upcoming.slice(0, 5).map((event, i) => (
-                          <div key={i} className={`event-item ${event.impactColor}`}>
-                            <span className={`impact-badge ${event.impactColor}`}>
-                              {event.impact === 'High' ? 'HIGH' : 'MED'}
-                            </span>
-                            <span className="event-date">{event.date}</span>
-                            <span className="event-time">{event.time || ''}</span>
-                            <span className="event-country">{event.country}</span>
-                            <span className="event-title">{event.title}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="loading-calendar">Loading economic calendar...</div>
-                )}
-              </div>
-
               <div className="plan-output-section">
                 <h3>AI Trading Plan</h3>
                 {plannerStatus?.status?.geminiAI !== 'ready' && (
@@ -1272,7 +1206,6 @@ function App() {
                           <span className={plannerData.dataSources?.chartAnalysis === 'success' ? 'success' : 'warning'}>Charts: {plannerData.dataSources?.chartAnalysis}</span>
                           <span className={plannerData.dataSources?.stockData === 'success' ? 'success' : 'warning'}>Stocks: {plannerData.dataSources?.stockData}</span>
                           <span className={plannerData.dataSources?.news === 'success' ? 'success' : 'warning'}>News: {plannerData.dataSources?.news}</span>
-                          <span className={plannerData.dataSources?.economicCalendar === 'success' ? 'success' : 'warning'}>Calendar: {plannerData.dataSources?.economicCalendar}</span>
                         </div>
                       </div>
                       <div className="plan-content">
