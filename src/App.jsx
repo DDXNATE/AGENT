@@ -606,114 +606,156 @@ function App() {
 
         {activeTab === 'planner' && (
           <div className="planner-section">
-            <div className="planner-header">
-              <div className="planner-title">
-                <h2>AI Trading Plan - {selectedPair}</h2>
-                <p>Comprehensive daily trading strategy powered by AI analysis</p>
+            <div className="planner-hero">
+              <div className="planner-hero-content">
+                <div className="planner-title-group">
+                  <h1 className="planner-main-title">AI Trading Plan</h1>
+                  <h2 className="planner-pair-subtitle">{selectedPair}</h2>
+                  <p className="planner-description">AI-powered daily trading strategy based on real-time market analysis</p>
+                </div>
+                <button 
+                  className={`generate-plan-btn-pro ${plannerLoading ? 'loading' : ''}`}
+                  onClick={generatePlan}
+                  disabled={plannerLoading}
+                >
+                  {plannerLoading ? (
+                    <>
+                      <span className="spinner-mini"></span> Generating Plan...
+                    </>
+                  ) : (
+                    <>
+                      ⚡ Generate Today's Plan
+                    </>
+                  )}
+                </button>
               </div>
-              <button 
-                className={`generate-plan-btn ${plannerLoading ? 'loading' : ''}`}
-                onClick={generatePlan}
-                disabled={plannerLoading}
-              >
-                {plannerLoading ? 'Generating Plan...' : 'Generate Today\'s Plan'}
-              </button>
             </div>
 
-            <div className="planner-status-grid">
-              <div className={`status-card ${plannerStatus?.status?.charts === 'ready' ? 'ready' : 'missing'}`}>
-                <div className="status-icon">{plannerStatus?.status?.charts === 'ready' ? '📊' : '⚠️'}</div>
-                <div className="status-info">
-                  <h4>Charts</h4>
-                  <p>{plannerStatus?.status?.chartCount || 0} uploaded</p>
+            <div className="planner-data-sources">
+              <div className={`data-source-card ${plannerStatus?.status?.charts === 'ready' ? 'ready' : 'pending'}`}>
+                <div className="source-header">
+                  <span className="source-icon">📊</span>
+                  <span className="source-title">Chart Analysis</span>
                 </div>
+                <div className="source-value">{plannerStatus?.status?.chartCount || 0} charts</div>
+                <div className="source-status-badge">{plannerStatus?.status?.charts === 'ready' ? '✓ Ready' : '⚠ Missing'}</div>
               </div>
-              <div className={`status-card ${plannerStatus?.status?.geminiAI === 'ready' ? 'ready' : 'missing'}`}>
-                <div className="status-icon">{plannerStatus?.status?.geminiAI === 'ready' ? '🤖' : '❌'}</div>
-                <div className="status-info">
-                  <h4>AI Engine</h4>
-                  <p>{plannerStatus?.status?.geminiAI === 'ready' ? 'Ready' : 'API key needed'}</p>
+              
+              <div className={`data-source-card ${plannerStatus?.status?.geminiAI === 'ready' ? 'ready' : 'pending'}`}>
+                <div className="source-header">
+                  <span className="source-icon">🤖</span>
+                  <span className="source-title">AI Engine</span>
                 </div>
+                <div className="source-value">Gemini API</div>
+                <div className="source-status-badge">{plannerStatus?.status?.geminiAI === 'ready' ? '✓ Ready' : '⚠ Configure'}</div>
               </div>
-              <div className={`status-card ${plannerStatus?.status?.finnhub === 'ready' ? 'ready' : 'missing'}`}>
-                <div className="status-icon">{plannerStatus?.status?.finnhub === 'ready' ? '💹' : '⚠️'}</div>
-                <div className="status-info">
-                  <h4>Market Data</h4>
-                  <p>{plannerStatus?.status?.finnhub === 'ready' ? 'Ready' : 'API key needed'}</p>
+              
+              <div className={`data-source-card ${plannerStatus?.status?.finnhub === 'ready' ? 'ready' : 'pending'}`}>
+                <div className="source-header">
+                  <span className="source-icon">💹</span>
+                  <span className="source-title">Market Data</span>
                 </div>
+                <div className="source-value">Real-time Data</div>
+                <div className="source-status-badge">{plannerStatus?.status?.finnhub === 'ready' ? '✓ Ready' : '⚠ Configure'}</div>
               </div>
             </div>
 
             {plannerLoading ? (
-              <div className="plan-loading">
+              <div className="plan-loading-pro">
                 <div className="loading-spinner-large"></div>
-                <p>Analyzing charts, stocks, news & economic events...</p>
+                <h3>Generating Your Trading Plan</h3>
+                <p>Analyzing charts, market data, and news to create your personalized strategy...</p>
                 <p className="loading-hint">This may take 10-30 seconds</p>
               </div>
             ) : plannerData ? (
               plannerData.error ? (
-                <div className="plan-error">
+                <div className="plan-error-pro">
+                  <h3>⚠️ Unable to Generate Plan</h3>
                   <p>{plannerData.error}</p>
                   {plannerData.error.includes('GEMINI') && (
-                    <p className="error-hint">Add GEMINI_API_KEY in Secrets to enable this feature.</p>
+                    <div className="error-solution">
+                      <strong>Solution:</strong> Add GEMINI_API_KEY in the Secrets tab to enable AI analysis
+                    </div>
                   )}
                 </div>
               ) : (
-                <div className="trading-plan-detailed">
-                  <div className="plan-meta-info">
-                    <span className="generated-time">⏱️ Generated in {plannerData.meta?.processingTimeMs}ms</span>
-                    <div className="source-status">
-                      <span className={plannerData.dataSources?.chartAnalysis === 'success' ? 'success' : 'warning'}>
-                        📈 Charts: {plannerData.dataSources?.chartAnalysis}
+                <div className="trading-plan-pro">
+                  <div className="plan-metadata">
+                    <div className="metadata-item">
+                      <span className="metadata-label">Generated</span>
+                      <span className="metadata-value">{plannerData.meta?.processingTimeMs}ms ago</span>
+                    </div>
+                    <div className="metadata-divider"></div>
+                    <div className="metadata-sources">
+                      <span className={`source-badge ${plannerData.dataSources?.chartAnalysis === 'success' ? 'success' : 'warning'}`}>
+                        📈 Charts
                       </span>
-                      <span className={plannerData.dataSources?.stockData === 'success' ? 'success' : 'warning'}>
-                        💹 Stocks: {plannerData.dataSources?.stockData}
+                      <span className={`source-badge ${plannerData.dataSources?.stockData === 'success' ? 'success' : 'warning'}`}>
+                        💹 Stocks
                       </span>
-                      <span className={plannerData.dataSources?.news === 'success' ? 'success' : 'warning'}>
-                        📰 News: {plannerData.dataSources?.news}
+                      <span className={`source-badge ${plannerData.dataSources?.news === 'success' ? 'success' : 'warning'}`}>
+                        📰 News
                       </span>
                     </div>
                   </div>
 
-                  <div className="plan-sections">
-                    <div className="plan-card main-plan">
-                      <h3>📋 Trading Strategy</h3>
-                      <div className="plan-content">
+                  <div className="plan-content-grid">
+                    <div className="plan-card-pro primary">
+                      <div className="card-header">
+                        <h3>📋 Trading Strategy</h3>
+                        <span className="card-badge">Primary</span>
+                      </div>
+                      <div className="card-content">
                         {plannerData.plan}
                       </div>
                     </div>
 
-                    <div className="plan-card support-card">
-                      <h3>💡 Key Insights</h3>
-                      <div className="insights-summary">
-                        <p>This plan integrates:</p>
-                        <ul>
-                          <li>Technical analysis from your uploaded charts</li>
-                          <li>Real-time market data for {selectedPair}</li>
-                          <li>Latest financial news and events</li>
-                          <li>Risk management best practices</li>
-                        </ul>
+                    <div className="plan-card-pro secondary">
+                      <div className="card-header">
+                        <h3>💡 Key Insights</h3>
+                        <span className="card-badge">Reference</span>
+                      </div>
+                      <div className="insights-list">
+                        <div className="insight-item">
+                          <span className="insight-icon">📈</span>
+                          <span>Technical analysis from your charts</span>
+                        </div>
+                        <div className="insight-item">
+                          <span className="insight-icon">📊</span>
+                          <span>Real-time market data for {selectedPair}</span>
+                        </div>
+                        <div className="insight-item">
+                          <span className="insight-icon">📰</span>
+                          <span>Latest financial news & events</span>
+                        </div>
+                        <div className="insight-item">
+                          <span className="insight-icon">⚙️</span>
+                          <span>Risk management best practices</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="plan-card action-items">
-                      <h3>✅ Action Items</h3>
-                      <div className="actions-list">
-                        <div className="action-item">
-                          <span className="action-number">1</span>
-                          <p>Review the trading strategy above</p>
+                    <div className="plan-card-pro secondary">
+                      <div className="card-header">
+                        <h3>✅ Action Checklist</h3>
+                        <span className="card-badge">Execution</span>
+                      </div>
+                      <div className="checklist-items">
+                        <div className="checklist-item">
+                          <input type="checkbox" id="check1" />
+                          <label htmlFor="check1">Review the trading strategy above</label>
                         </div>
-                        <div className="action-item">
-                          <span className="action-number">2</span>
-                          <p>Set your entry and exit levels</p>
+                        <div className="checklist-item">
+                          <input type="checkbox" id="check2" />
+                          <label htmlFor="check2">Set your entry and exit levels</label>
                         </div>
-                        <div className="action-item">
-                          <span className="action-number">3</span>
-                          <p>Confirm risk/reward ratios</p>
+                        <div className="checklist-item">
+                          <input type="checkbox" id="check3" />
+                          <label htmlFor="check3">Confirm risk/reward ratios</label>
                         </div>
-                        <div className="action-item">
-                          <span className="action-number">4</span>
-                          <p>Execute according to plan</p>
+                        <div className="checklist-item">
+                          <input type="checkbox" id="check4" />
+                          <label htmlFor="check4">Execute according to plan</label>
                         </div>
                       </div>
                     </div>
@@ -721,16 +763,24 @@ function App() {
                 </div>
               )
             ) : (
-              <div className="plan-empty">
-                <div className="empty-icon">📅</div>
-                <p className="empty-title">No Trading Plan Yet</p>
-                <p className="empty-hint">Click "Generate Today's Plan" to create your AI-powered trading strategy</p>
-                {plannerStatus?.status?.charts !== 'ready' && (
-                  <p className="hint warning">💡 Tip: Upload charts in the Charts tab first for more accurate analysis!</p>
-                )}
-                {plannerStatus?.status?.geminiAI !== 'ready' && (
-                  <p className="hint warning">🔑 Tip: Add GEMINI_API_KEY in Secrets to unlock AI analysis!</p>
-                )}
+              <div className="plan-empty-pro">
+                <div className="empty-content">
+                  <div className="empty-icon-large">📅</div>
+                  <h2>Ready to Generate Your Trading Plan?</h2>
+                  <p>Click the button above to create an AI-powered trading strategy based on your charts and market analysis</p>
+                  
+                  <div className="empty-requirements">
+                    <h4>Requirements:</h4>
+                    <div className="req-item">
+                      <span className={plannerStatus?.status?.charts === 'ready' ? '✓' : '✗'}>Charts</span>
+                      <span className="req-text">{plannerStatus?.status?.charts === 'ready' ? 'Charts uploaded' : 'Upload charts in Charts tab'}</span>
+                    </div>
+                    <div className="req-item">
+                      <span className={plannerStatus?.status?.geminiAI === 'ready' ? '✓' : '✗'}>AI Key</span>
+                      <span className="req-text">{plannerStatus?.status?.geminiAI === 'ready' ? 'API configured' : 'Add GEMINI_API_KEY'}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
