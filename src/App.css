@@ -1727,6 +1727,147 @@
   color: #ff9f43;
 }
 
+/* Trading Plan Detailed Styles */
+.trading-plan-detailed {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.plan-meta-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--glass-purple);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+}
+
+.generated-time {
+  font-size: 0.85rem;
+  color: var(--neon-green);
+  font-weight: 600;
+}
+
+.plan-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  grid-auto-rows: max-content;
+}
+
+.plan-sections .main-plan {
+  grid-column: 1 / -1;
+}
+
+.plan-card {
+  background: var(--glass-purple);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.plan-card h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  color: var(--neon-green);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.insights-summary {
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.insights-summary p {
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: var(--electric-violet-light);
+}
+
+.insights-summary ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.insights-summary li {
+  padding: 6px 0;
+  color: var(--text-primary);
+  position: relative;
+  padding-left: 20px;
+}
+
+.insights-summary li:before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--neon-green);
+  font-weight: 700;
+}
+
+.actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.action-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  background: rgba(198, 255, 0, 0.05);
+  border-left: 3px solid var(--neon-green);
+  border-radius: 6px;
+}
+
+.action-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  color: var(--neon-purple-deep);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.action-item p {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.plan-empty .empty-icon {
+  font-size: 3rem;
+  margin-bottom: 10px;
+}
+
+.plan-empty .empty-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.plan-empty .empty-hint {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
 @media (max-width: 768px) {
   .header-content {
     flex-direction: column;

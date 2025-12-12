@@ -1140,8 +1140,8 @@ function App() {
           <div className="planner-section">
             <div className="planner-header">
               <div className="planner-title">
-                <h2>Trading Planner - {selectedPair}</h2>
-                <p>AI-powered daily trading plan based on charts, stocks, news & economic calendar</p>
+                <h2>AI Trading Plan - {selectedPair}</h2>
+                <p>Comprehensive daily trading strategy powered by AI analysis</p>
               </div>
               <button 
                 className={`generate-plan-btn ${plannerLoading ? 'loading' : ''}`}
@@ -1154,76 +1154,117 @@ function App() {
 
             <div className="planner-status-grid">
               <div className={`status-card ${plannerStatus?.status?.charts === 'ready' ? 'ready' : 'missing'}`}>
-                <div className="status-icon">{plannerStatus?.status?.charts === 'ready' ? 'V' : 'X'}</div>
+                <div className="status-icon">{plannerStatus?.status?.charts === 'ready' ? '📊' : '⚠️'}</div>
                 <div className="status-info">
                   <h4>Charts</h4>
                   <p>{plannerStatus?.status?.chartCount || 0} uploaded</p>
                 </div>
               </div>
               <div className={`status-card ${plannerStatus?.status?.geminiAI === 'ready' ? 'ready' : 'missing'}`}>
-                <div className="status-icon">{plannerStatus?.status?.geminiAI === 'ready' ? 'V' : 'X'}</div>
+                <div className="status-icon">{plannerStatus?.status?.geminiAI === 'ready' ? '🤖' : '❌'}</div>
                 <div className="status-info">
-                  <h4>AI Analysis</h4>
+                  <h4>AI Engine</h4>
                   <p>{plannerStatus?.status?.geminiAI === 'ready' ? 'Ready' : 'API key needed'}</p>
                 </div>
               </div>
               <div className={`status-card ${plannerStatus?.status?.finnhub === 'ready' ? 'ready' : 'missing'}`}>
-                <div className="status-icon">{plannerStatus?.status?.finnhub === 'ready' ? 'V' : 'X'}</div>
+                <div className="status-icon">{plannerStatus?.status?.finnhub === 'ready' ? '💹' : '⚠️'}</div>
                 <div className="status-info">
-                  <h4>Stock Data</h4>
+                  <h4>Market Data</h4>
                   <p>{plannerStatus?.status?.finnhub === 'ready' ? 'Ready' : 'API key needed'}</p>
                 </div>
               </div>
             </div>
 
-            <div className="planner-content-grid">
-              <div className="plan-output-section">
-                <h3>AI Trading Plan</h3>
-                {plannerStatus?.status?.geminiAI !== 'ready' && (
-                  <div className="api-warning">
-                    GEMINI_API_KEY is required to generate trading plans. Add it in the Secrets tab.
-                  </div>
-                )}
-                {plannerLoading ? (
-                  <div className="plan-loading">
-                    <div className="loading-spinner-large"></div>
-                    <p>Analyzing charts, stocks, news & economic events...</p>
-                    <p className="loading-hint">This may take 10-30 seconds</p>
-                  </div>
-                ) : plannerData ? (
-                  plannerData.error ? (
-                    <div className="plan-error">
-                      <p>{plannerData.error}</p>
-                      {plannerData.error.includes('GEMINI') && (
-                        <p className="error-hint">Add GEMINI_API_KEY in Secrets to enable this feature.</p>
-                      )}
+            {plannerLoading ? (
+              <div className="plan-loading">
+                <div className="loading-spinner-large"></div>
+                <p>Analyzing charts, stocks, news & economic events...</p>
+                <p className="loading-hint">This may take 10-30 seconds</p>
+              </div>
+            ) : plannerData ? (
+              plannerData.error ? (
+                <div className="plan-error">
+                  <p>{plannerData.error}</p>
+                  {plannerData.error.includes('GEMINI') && (
+                    <p className="error-hint">Add GEMINI_API_KEY in Secrets to enable this feature.</p>
+                  )}
+                </div>
+              ) : (
+                <div className="trading-plan-detailed">
+                  <div className="plan-meta-info">
+                    <span className="generated-time">⏱️ Generated in {plannerData.meta?.processingTimeMs}ms</span>
+                    <div className="source-status">
+                      <span className={plannerData.dataSources?.chartAnalysis === 'success' ? 'success' : 'warning'}>
+                        📈 Charts: {plannerData.dataSources?.chartAnalysis}
+                      </span>
+                      <span className={plannerData.dataSources?.stockData === 'success' ? 'success' : 'warning'}>
+                        💹 Stocks: {plannerData.dataSources?.stockData}
+                      </span>
+                      <span className={plannerData.dataSources?.news === 'success' ? 'success' : 'warning'}>
+                        📰 News: {plannerData.dataSources?.news}
+                      </span>
                     </div>
-                  ) : (
-                    <div className="plan-result">
-                      <div className="plan-meta">
-                        <span>Generated in {plannerData.meta?.processingTimeMs}ms</span>
-                        <div className="source-status">
-                          <span className={plannerData.dataSources?.chartAnalysis === 'success' ? 'success' : 'warning'}>Charts: {plannerData.dataSources?.chartAnalysis}</span>
-                          <span className={plannerData.dataSources?.stockData === 'success' ? 'success' : 'warning'}>Stocks: {plannerData.dataSources?.stockData}</span>
-                          <span className={plannerData.dataSources?.news === 'success' ? 'success' : 'warning'}>News: {plannerData.dataSources?.news}</span>
-                        </div>
-                      </div>
+                  </div>
+
+                  <div className="plan-sections">
+                    <div className="plan-card main-plan">
+                      <h3>📋 Trading Strategy</h3>
                       <div className="plan-content">
                         {plannerData.plan}
                       </div>
                     </div>
-                  )
-                ) : (
-                  <div className="plan-empty">
-                    <p>Click "Generate Today's Plan" to create your AI trading plan</p>
-                    <p className="hint">The planner will analyze your uploaded charts, check stock trends, fetch market news, and review high-impact economic events to create a comprehensive trading plan.</p>
-                    {plannerStatus?.status?.charts !== 'ready' && (
-                      <p className="hint warning">Tip: Upload charts first for better analysis!</p>
-                    )}
+
+                    <div className="plan-card support-card">
+                      <h3>💡 Key Insights</h3>
+                      <div className="insights-summary">
+                        <p>This plan integrates:</p>
+                        <ul>
+                          <li>Technical analysis from your uploaded charts</li>
+                          <li>Real-time market data for {selectedPair}</li>
+                          <li>Latest financial news and events</li>
+                          <li>Risk management best practices</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="plan-card action-items">
+                      <h3>✅ Action Items</h3>
+                      <div className="actions-list">
+                        <div className="action-item">
+                          <span className="action-number">1</span>
+                          <p>Review the trading strategy above</p>
+                        </div>
+                        <div className="action-item">
+                          <span className="action-number">2</span>
+                          <p>Set your entry and exit levels</p>
+                        </div>
+                        <div className="action-item">
+                          <span className="action-number">3</span>
+                          <p>Confirm risk/reward ratios</p>
+                        </div>
+                        <div className="action-item">
+                          <span className="action-number">4</span>
+                          <p>Execute according to plan</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                </div>
+              )
+            ) : (
+              <div className="plan-empty">
+                <div className="empty-icon">📅</div>
+                <p className="empty-title">No Trading Plan Yet</p>
+                <p className="empty-hint">Click "Generate Today's Plan" to create your AI-powered trading strategy</p>
+                {plannerStatus?.status?.charts !== 'ready' && (
+                  <p className="hint warning">💡 Tip: Upload charts in the Charts tab first for more accurate analysis!</p>
+                )}
+                {plannerStatus?.status?.geminiAI !== 'ready' && (
+                  <p className="hint warning">🔑 Tip: Add GEMINI_API_KEY in Secrets to unlock AI analysis!</p>
                 )}
               </div>
-            </div>
+            )}
           </div>
         )}
       </main>
