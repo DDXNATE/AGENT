@@ -1,7 +1,9 @@
-# Environment files - NEVER commit these
+# ⚠️ SENSITIVE DATA - NEVER COMMIT
+# Environment files with secrets
 .env
 .env.local
 .env.*.local
+.env.production.local
 
 # Logs
 logs
@@ -12,12 +14,17 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
 dist
 dist-ssr
 *.local
 
-# Editor directories and files
+# Vite build cache
+.vite
+.cache
+
+# IDE
 .vscode/*
 !.vscode/extensions.json
 .idea
@@ -27,3 +34,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temporary
+*.tmp
+*.temp
+*.bak
+SECURITY_API_KEYS.md

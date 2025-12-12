@@ -1,10 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
+import AuthPage from './components/AuthPage'
+import FinvizMap from './components/FinvizMap'
+import '../src/styles/FinvizMap.css'
+import { signOut, onAuthStateChange } from './utils/supabase'
 
 const TRADING_PAIRS = ['US30', 'NAS100', 'SPX500'];
 const TIMEFRAMES = ['15m', '1hr', '4hr', 'daily'];
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState(null)
+  const [checkingAuth, setCheckingAuth] = useState(true)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -27,6 +34,8 @@ function App() {
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
+  console.log('🤖 App component mounted, checkingAuth:', checkingAuth, 'isAuthenticated:', isAuthenticated)
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -34,6 +43,44 @@ function App() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Setup Supabase auth listener
+  useEffect(() => {
+    console.log('🔐 Setting up auth listener...')
+    try {
+      const { data: { subscription } } = onAuthStateChange((event, session) => {
+        console.log('🔐 Auth state changed:', event, !!session)
+        if (session) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email,
+            username: session.user.user_metadata?.username || session.user.email
+          })
+          setIsAuthenticated(true)
+        } else {
+          setUser(null)
+          setIsAuthenticated(false)
+          setMessages([])
+        }
+        setCheckingAuth(false)
+      })
+
+      // Timeout fallback - if auth check takes too long, continue anyway
+      const timeout = setTimeout(() => {
+        console.log('⏱️ Auth check timeout - forcing load')
+        setCheckingAuth(false)
+        setIsAuthenticated(false)
+      }, 2000)
+
+      return () => {
+        clearTimeout(timeout)
+        subscription?.unsubscribe?.()
+      }
+    } catch (error) {
+      console.error('❌ Auth setup error:', error)
+      setCheckingAuth(false)
+    }
+  }, [])
 
   useEffect(() => {
     if (activeTab === 'stocks') {
@@ -154,10 +201,29 @@ function App() {
     setPlannerLoading(true)
     setPlannerData(null)
     try {
+      // Fetch all necessary data for analysis
+      const [chartsRes, stocksRes, newsRes, mapRes] = await Promise.all([
+        fetch(`/api/charts/${selectedPair}`),
+        fetch(`/api/stocks/${selectedPair}`),
+        fetch(`/api/news/${selectedPair}`),
+        fetch(`/api/market-map/${selectedPair}`)
+      ])
+      
+      const charts = await chartsRes.json()
+      const stocks = await stocksRes.json()
+      const news = await newsRes.json()
+      const map = await mapRes.json()
+      
       const response = await fetch('/api/planner/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pair: selectedPair })
+        body: JSON.stringify({ 
+          pair: selectedPair,
+          charts: charts,
+          stocks: stocks,
+          news: news,
+          map: map
+        })
       })
       const data = await response.json()
       if (data.success) {
@@ -257,6 +323,40 @@ function App() {
     { label: 'Trading setup', cmd: `Hey Pippy, what trading setups do you see for ${selectedPair}?` }
   ]
 
+  const handleAuthSuccess = (userData) => {
+    setUser(userData)
+    setIsAuthenticated(true)
+  }
+
+  const handleLogout = async () => {
+    try {
+      await signOut()
+      setUser(null)
+      setIsAuthenticated(false)
+      setMessages([])
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
+  }
+
+  if (checkingAuth) {
+    console.log('⏳ Rendering loading screen...')
+    return (
+      <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#1a1a1a' }}>
+        <div style={{ textAlign: 'center', color: '#fff' }}>
+          <div className="loading-spinner"></div>
+          <p style={{ marginTop: '20px', fontSize: '16px' }}>Loading Application...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    console.log('🔓 Rendering AuthPage...')
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />
+  }
+
+  console.log('✅ Rendering authenticated app...')
   return (
     <div className="app-container">
       <header className="header">
@@ -265,16 +365,22 @@ function App() {
             <h1>Agent Pippy</h1>
             <p className="subtitle">AI Trading Assistant</p>
           </div>
-          <div className="pair-selector">
-            {TRADING_PAIRS.map(pair => (
-              <button
-                key={pair}
-                className={`pair-btn ${selectedPair === pair ? 'active' : ''}`}
-                onClick={() => setSelectedPair(pair)}
-              >
-                {pair}
-              </button>
-            ))}
+          <div className="header-user-section">
+            <div className="user-info">
+              <span className="user-name">{user?.username || 'User'}</span>
+              <button onClick={handleLogout} className="logout-btn">Logout</button>
+            </div>
+            <div className="pair-selector">
+              {TRADING_PAIRS.map(pair => (
+                <button
+                  key={pair}
+                  className={`pair-btn ${selectedPair === pair ? 'active' : ''}`}
+                  onClick={() => setSelectedPair(pair)}
+                >
+                  {pair}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </header>
@@ -297,6 +403,12 @@ function App() {
           onClick={() => setActiveTab('stocks')}
         >
           Screener
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'map' ? 'active' : ''}`}
+          onClick={() => setActiveTab('map')}
+        >
+          Map
         </button>
         <button 
           className={`tab-btn ${activeTab === 'news' ? 'active' : ''}`}
@@ -603,6 +715,9 @@ function App() {
           </div>
         )}
 
+        {activeTab === 'map' && (
+          <FinvizMap selectedPair={selectedPair} />
+        )}
 
         {activeTab === 'planner' && (
           <div className="planner-section">

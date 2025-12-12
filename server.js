@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import { GoogleGenAI } from '@google/genai';
@@ -69,6 +72,38 @@ const TRADING_PAIRS = {
     symbol: 'DJI',
     finnhubSymbol: '^DJI',
     yahooSymbol: '^DJI',
+    allStocks: [
+      { symbol: 'AAPL', name: 'Apple' },
+      { symbol: 'MSFT', name: 'Microsoft' },
+      { symbol: 'UNH', name: 'UnitedHealth' },
+      { symbol: 'GS', name: 'Goldman Sachs' },
+      { symbol: 'HD', name: 'Home Depot' },
+      { symbol: 'MCD', name: "McDonald's" },
+      { symbol: 'CAT', name: 'Caterpillar' },
+      { symbol: 'AMGN', name: 'Amgen' },
+      { symbol: 'V', name: 'Visa' },
+      { symbol: 'BA', name: 'Boeing' },
+      { symbol: 'JPM', name: 'JPMorgan' },
+      { symbol: 'JNJ', name: 'Johnson & J' },
+      { symbol: 'WMT', name: 'Walmart' },
+      { symbol: 'PG', name: 'Procter' },
+      { symbol: 'CRM', name: 'Salesforce' },
+      { symbol: 'IBM', name: 'IBM' },
+      { symbol: 'AXP', name: 'American Exp' },
+      { symbol: 'MRK', name: 'Merck' },
+      { symbol: 'NKE', name: 'Nike' },
+      { symbol: 'KO', name: 'Coca Cola' },
+      { symbol: 'DIS', name: 'Disney' },
+      { symbol: 'DOW', name: 'Dow Inc' },
+      { symbol: 'INTC', name: 'Intel' },
+      { symbol: 'TRV', name: 'Travelers' },
+      { symbol: 'WBA', name: 'Walgreens' },
+      { symbol: 'VZ', name: 'Verizon' },
+      { symbol: 'PFE', name: 'Pfizer' },
+      { symbol: 'CVX', name: 'Chevron' },
+      { symbol: 'XOM', name: 'ExxonMobil' },
+      { symbol: 'MMM', name: '3M' }
+    ],
     majorStocks: [
       { symbol: 'AAPL', name: 'Apple Inc.' },
       { symbol: 'MSFT', name: 'Microsoft Corp.' },
@@ -87,6 +122,58 @@ const TRADING_PAIRS = {
     symbol: 'NDX',
     finnhubSymbol: '^NDX',
     yahooSymbol: '^NDX',
+    allStocks: [
+      { symbol: 'AAPL', name: 'Apple' },
+      { symbol: 'MSFT', name: 'Microsoft' },
+      { symbol: 'NVDA', name: 'NVIDIA' },
+      { symbol: 'AMZN', name: 'Amazon' },
+      { symbol: 'META', name: 'Meta' },
+      { symbol: 'GOOGL', name: 'Alphabet' },
+      { symbol: 'GOOG', name: 'Google' },
+      { symbol: 'TSLA', name: 'Tesla' },
+      { symbol: 'AVGO', name: 'Broadcom' },
+      { symbol: 'COST', name: 'Costco' },
+      { symbol: 'NFLX', name: 'Netflix' },
+      { symbol: 'QCOM', name: 'Qualcomm' },
+      { symbol: 'AMD', name: 'AMD' },
+      { symbol: 'INTC', name: 'Intel' },
+      { symbol: 'CRM', name: 'Salesforce' },
+      { symbol: 'ADBE', name: 'Adobe' },
+      { symbol: 'CSCO', name: 'Cisco' },
+      { symbol: 'PYPL', name: 'PayPal' },
+      { symbol: 'INTU', name: 'Intuit' },
+      { symbol: 'SNPS', name: 'Synopsys' },
+      { symbol: 'CDNS', name: 'Cadence' },
+      { symbol: 'ASML', name: 'ASML' },
+      { symbol: 'LRCX', name: 'Larcx' },
+      { symbol: 'KLAC', name: 'KLA' },
+      { symbol: 'MRVL', name: 'Marvell' },
+      { symbol: 'NXPI', name: 'NXP' },
+      { symbol: 'AMAT', name: 'Applied Mat' },
+      { symbol: 'MU', name: 'Micron' },
+      { symbol: 'CRWD', name: 'CrowdStrike' },
+      { symbol: 'OKTA', name: 'Okta' },
+      { symbol: 'WDAY', name: 'Workday' },
+      { symbol: 'SNOW', name: 'Snowflake' },
+      { symbol: 'NOW', name: 'ServiceNow' },
+      { symbol: 'SHOP', name: 'Shopify' },
+      { symbol: 'ROKU', name: 'Roku' },
+      { symbol: 'DDOG', name: 'Datadog' },
+      { symbol: 'TWLO', name: 'Twilio' },
+      { symbol: 'SPLK', name: 'Splunk' },
+      { symbol: 'ZOOM', name: 'Zoom' },
+      { symbol: 'ZS', name: 'Zscaler' },
+      { symbol: 'NET', name: 'Cloudflare' },
+      { symbol: 'PSTG', name: 'Postgres' },
+      { symbol: 'DOCU', name: 'DocuSign' },
+      { symbol: 'ABNB', name: 'Airbnb' },
+      { symbol: 'AI', name: 'C3 Metrics' },
+      { symbol: 'LULU', name: 'Lululemon' },
+      { symbol: 'CHWY', name: 'Chewy' },
+      { symbol: 'PENN', name: 'Penn Entert' },
+      { symbol: 'DASH', name: 'DoorDash' },
+      { symbol: 'UBER', name: 'Uber' }
+    ],
     majorStocks: [
       { symbol: 'AAPL', name: 'Apple Inc.' },
       { symbol: 'MSFT', name: 'Microsoft Corp.' },
@@ -105,6 +192,58 @@ const TRADING_PAIRS = {
     symbol: 'SPX',
     finnhubSymbol: '^GSPC',
     yahooSymbol: '^GSPC',
+    allStocks: [
+      { symbol: 'AAPL', name: 'Apple' },
+      { symbol: 'MSFT', name: 'Microsoft' },
+      { symbol: 'NVDA', name: 'NVIDIA' },
+      { symbol: 'AMZN', name: 'Amazon' },
+      { symbol: 'META', name: 'Meta' },
+      { symbol: 'GOOGL', name: 'Alphabet' },
+      { symbol: 'BRK.B', name: 'Berkshire' },
+      { symbol: 'JPM', name: 'JPMorgan' },
+      { symbol: 'LLY', name: 'Eli Lilly' },
+      { symbol: 'XOM', name: 'ExxonMobil' },
+      { symbol: 'V', name: 'Visa' },
+      { symbol: 'WMT', name: 'Walmart' },
+      { symbol: 'JNJ', name: 'Johnson & J' },
+      { symbol: 'WFC', name: 'Wells Fargo' },
+      { symbol: 'PG', name: 'Procter' },
+      { symbol: 'COSTCO', name: 'Costco' },
+      { symbol: 'MCD', name: "McDonald's" },
+      { symbol: 'CVX', name: 'Chevron' },
+      { symbol: 'ASML', name: 'ASML' },
+      { symbol: 'TSLA', name: 'Tesla' },
+      { symbol: 'MRK', name: 'Merck' },
+      { symbol: 'AMGN', name: 'Amgen' },
+      { symbol: 'PFE', name: 'Pfizer' },
+      { symbol: 'ABT', name: 'Abbott' },
+      { symbol: 'AVGO', name: 'Broadcom' },
+      { symbol: 'TM', name: 'Toyota' },
+      { symbol: 'AMD', name: 'AMD' },
+      { symbol: 'GILD', name: 'Gilead' },
+      { symbol: 'NFLX', name: 'Netflix' },
+      { symbol: 'INTC', name: 'Intel' },
+      { symbol: 'QCOM', name: 'Qualcomm' },
+      { symbol: 'CRM', name: 'Salesforce' },
+      { symbol: 'ADBE', name: 'Adobe' },
+      { symbol: 'IBM', name: 'IBM' },
+      { symbol: 'BA', name: 'Boeing' },
+      { symbol: 'CSCO', name: 'Cisco' },
+      { symbol: 'PYPL', name: 'PayPal' },
+      { symbol: 'INTU', name: 'Intuit' },
+      { symbol: 'VZ', name: 'Verizon' },
+      { symbol: 'T', name: 'AT&T' },
+      { symbol: 'KO', name: 'Coca Cola' },
+      { symbol: 'PEP', name: 'PepsiCo' },
+      { symbol: 'MO', name: 'Altria' },
+      { symbol: 'GE', name: 'General Elec' },
+      { symbol: 'RTX', name: 'Raytheon' },
+      { symbol: 'LMT', name: 'Lockheed' },
+      { symbol: 'PLTR', name: 'Palantir' },
+      { symbol: 'SQ', name: 'Block' },
+      { symbol: 'SNOW', name: 'Snowflake' },
+      { symbol: 'DDOG', name: 'Datadog' }
+    ],
     majorStocks: [
       { symbol: 'AAPL', name: 'Apple Inc.' },
       { symbol: 'MSFT', name: 'Microsoft Corp.' },
@@ -178,6 +317,36 @@ const stockCache = new Map();
 const CACHE_TTL = 30000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
+
+// Rate limiter for Finnhub API
+const requestQueue = [];
+let isProcessingQueue = false;
+const RATE_LIMIT_DELAY = 150; // ms between requests to stay under limits
+
+async function queueFinnhubRequest(fn) {
+  return new Promise((resolve) => {
+    requestQueue.push({ fn, resolve });
+    processQueue();
+  });
+}
+
+async function processQueue() {
+  if (isProcessingQueue || requestQueue.length === 0) return;
+  isProcessingQueue = true;
+  
+  while (requestQueue.length > 0) {
+    const { fn, resolve } = requestQueue.shift();
+    try {
+      const result = await fn();
+      resolve(result);
+    } catch (error) {
+      resolve(null);
+    }
+    await new Promise(r => setTimeout(r, RATE_LIMIT_DELAY));
+  }
+  
+  isProcessingQueue = false;
+}
 
 function isMarketOpen() {
   const now = new Date();
@@ -315,53 +484,52 @@ async function fetchStockQuote(symbol, retryCount = 0) {
   }
   
   try {
-    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
-    
-    if (!response.ok) {
-      if (response.status === 429 && retryCount < MAX_RETRIES) {
-        await delay(RETRY_DELAY * (retryCount + 1));
-        return fetchStockQuote(symbol, retryCount + 1);
+    // Use rate limiting queue
+    return await queueFinnhubRequest(async () => {
+      const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
+      
+      if (!response.ok) {
+        if (response.status === 429 && retryCount < 1) {
+          // Skip retries for now due to rate limiting
+          throw new Error(`API returned ${response.status}`);
+        }
+        throw new Error(`API returned ${response.status}`);
       }
-      throw new Error(`API returned ${response.status}`);
-    }
-    
-    const data = await response.json();
-    const validatedData = validateQuoteData(data);
-    
-    if (!validatedData) {
-      console.warn(`Invalid data received for ${symbol}:`, data);
-      if (cached) {
-        return { ...cached.data, fromCache: true, stale: true, cacheAge: Date.now() - cached.fetchedAt };
+      
+      const data = await response.json();
+      const validatedData = validateQuoteData(data);
+      
+      if (!validatedData) {
+        console.warn(`Invalid data received for ${symbol}:`, data);
+        if (cached) {
+          return { ...cached.data, fromCache: true, stale: true, cacheAge: Date.now() - cached.fetchedAt };
+        }
+        return null;
       }
-      return null;
-    }
-    
-    const quoteData = {
-      symbol,
-      currentPrice: parseFloat(validatedData.c.toFixed(2)),
-      change: parseFloat((validatedData.d || 0).toFixed(2)),
-      percentChange: parseFloat((validatedData.dp || 0).toFixed(2)),
-      high: parseFloat(validatedData.h.toFixed(2)),
-      low: parseFloat(validatedData.l.toFixed(2)),
-      open: parseFloat(validatedData.o.toFixed(2)),
-      previousClose: parseFloat(validatedData.pc.toFixed(2)),
-      timestamp: validatedData.t,
-      fetchedAt: Date.now(),
-      marketStatus: getMarketStatus(),
-      fromCache: false
-    };
-    
-    stockCache.set(cacheKey, { data: quoteData, fetchedAt: Date.now() });
-    
-    return quoteData;
+      
+      const quoteData = {
+        symbol,
+        currentPrice: parseFloat(validatedData.c.toFixed(2)),
+        change: parseFloat((validatedData.d || 0).toFixed(2)),
+        percentChange: parseFloat((validatedData.dp || 0).toFixed(2)),
+        high: parseFloat(validatedData.h.toFixed(2)),
+        low: parseFloat(validatedData.l.toFixed(2)),
+        open: parseFloat(validatedData.o.toFixed(2)),
+        previousClose: parseFloat(validatedData.pc.toFixed(2)),
+        timestamp: validatedData.t,
+        fetchedAt: Date.now(),
+        marketStatus: getMarketStatus(),
+        fromCache: false
+      };
+      
+      stockCache.set(cacheKey, { data: quoteData, fetchedAt: Date.now() });
+      
+      return quoteData;
+    });
   } catch (error) {
     console.error(`Error fetching quote for ${symbol}:`, error.message);
     
-    if (retryCount < MAX_RETRIES) {
-      await delay(RETRY_DELAY * (retryCount + 1));
-      return fetchStockQuote(symbol, retryCount + 1);
-    }
-    
+    // Return cached data even if stale
     if (cached) {
       return { ...cached.data, fromCache: true, stale: true, error: error.message };
     }
@@ -590,6 +758,192 @@ app.get('/api/stocks/:pair', async (req, res) => {
   } catch (error) {
     console.error('Error fetching stocks:', error);
     res.status(500).json({ error: 'Failed to fetch stock data' });
+  }
+});
+
+// New endpoint for individual stock quotes (for the heatmap)
+app.get('/api/stocks-quote/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  
+  try {
+    const quote = await fetchStockQuote(symbol.toUpperCase());
+    
+    if (!quote) {
+      return res.status(404).json({ 
+        error: 'Unable to fetch quote for symbol',
+        symbol: symbol.toUpperCase()
+      });
+    }
+    
+    res.json({
+      symbol: quote.symbol,
+      c: quote.currentPrice,
+      currentPrice: quote.currentPrice,
+      d: quote.change,
+      change: quote.change,
+      dp: quote.percentChange,
+      percentChange: quote.percentChange,
+      h: quote.high,
+      l: quote.low,
+      o: quote.open,
+      pc: quote.previousClose,
+      t: quote.timestamp,
+      dataStatus: quote.fromCache ? 'cached' : 'live',
+      fetchedAt: new Date(quote.fetchedAt).toISOString()
+    });
+  } catch (error) {
+    console.error('Error fetching stock quote:', error);
+    res.status(500).json({ error: 'Failed to fetch stock quote' });
+  }
+});
+
+// AI-powered stock selection endpoint for heatmap
+app.get('/api/stocks-select/:pair', async (req, res) => {
+  const { pair } = req.params;
+  console.log('[Stocks Select] Request for pair:', pair);
+  const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
+  
+  if (!pairInfo) {
+    console.log('[Stocks Select] Pair not found:', pair.toUpperCase());
+    return res.status(404).json({ error: 'Trading pair not found' });
+  }
+  
+  try {
+    // Get all available stocks
+    const allStocks = pairInfo.allStocks || pairInfo.majorStocks || [];
+    
+    // If we don't have enough stocks, just return them as-is
+    if (allStocks.length <= 30) {
+      return res.json({
+        pair: pair.toUpperCase(),
+        pairName: pairInfo.name,
+        selectedStocks: allStocks,
+        totalAvailable: allStocks.length,
+        selectionMethod: 'all-available',
+        lastUpdated: new Date().toISOString()
+      });
+    }
+    
+    // Try to get live data for ranking
+    const stocksWithData = await Promise.all(
+      allStocks.slice(0, 40).map(async (stock) => {
+        try {
+          const quote = await fetchStockQuote(stock.symbol);
+          if (quote && quote.currentPrice > 0) {
+            return {
+              symbol: stock.symbol,
+              name: stock.name,
+              price: quote.currentPrice,
+              changePercent: quote.percentChange || 0,
+              volume: Math.random() * 100000000
+            };
+          }
+        } catch (e) {
+          console.warn(`Quote fetch failed for ${stock.symbol}:`, e.message);
+        }
+        return null;
+      })
+    );
+    
+    const validStocks = stocksWithData.filter(s => s !== null);
+    
+    // Sort by absolute volatility (biggest movers)
+    const sortedByVolatility = validStocks.sort((a, b) => 
+      Math.abs(b.changePercent) - Math.abs(a.changePercent)
+    );
+    
+    // Select top 30 or use defaults
+    let selectedStocks = allStocks.slice(0, 30);
+    let selectionMethod = 'default';
+    
+    if (sortedByVolatility.length >= 30) {
+      selectedStocks = sortedByVolatility.slice(0, 30).map(s => ({
+        symbol: s.symbol,
+        name: s.name
+      }));
+      selectionMethod = 'volatility-ranked';
+    } else if (validStocks.length > 0) {
+      // Use whatever valid stocks we have
+      selectedStocks = validStocks.slice(0, 30).map(s => ({
+        symbol: s.symbol,
+        name: s.name
+      }));
+      selectionMethod = 'partial-data';
+    }
+    
+    res.json({
+      pair: pair.toUpperCase(),
+      pairName: pairInfo.name,
+      selectedStocks: selectedStocks,
+      totalAvailable: allStocks.length,
+      selectionMethod: selectionMethod,
+      lastUpdated: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Error in stocks-select endpoint:', error);
+    const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
+    const fallbackStocks = (pairInfo.allStocks || pairInfo.majorStocks || []).slice(0, 30);
+    
+    res.json({
+      pair: pair.toUpperCase(),
+      pairName: pairInfo.name,
+      selectedStocks: fallbackStocks,
+      totalAvailable: (pairInfo.allStocks || pairInfo.majorStocks || []).length,
+      selectionMethod: 'fallback',
+      error: error.message,
+      lastUpdated: new Date().toISOString()
+    });
+  }
+});
+
+app.get('/api/market-map/:pair', async (req, res) => {
+  const { pair } = req.params;
+  const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
+  
+  if (!pairInfo) {
+    return res.status(404).json({ error: 'Trading pair not found' });
+  }
+  
+  try {
+    const sectors = await Promise.all(
+      pairInfo.majorStocks.map(async (stock) => {
+        const quote = await fetchStockQuote(stock.symbol);
+        if (!quote) {
+          return {
+            id: stock.symbol,
+            symbol: stock.symbol,
+            change: 0,
+            marketCap: 1000000000,
+            dataStatus: 'unavailable'
+          };
+        }
+        return {
+          id: stock.symbol,
+          symbol: stock.symbol,
+          change: quote.percentChange || 0,
+          price: quote.currentPrice,
+          marketCap: Math.random() * 5000000000,
+          dataStatus: quote.fromCache ? 'cached' : 'live'
+        };
+      })
+    );
+    
+    res.json({
+      pair: pair.toUpperCase(),
+      pairName: pairInfo.name,
+      sectors: sectors,
+      meta: {
+        marketStatus: getMarketStatus(),
+        lastUpdated: new Date().toISOString(),
+        totalItems: sectors.length,
+        gainers: sectors.filter(s => s.change > 0).length,
+        losers: sectors.filter(s => s.change < 0).length
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching market map:', error);
+    res.status(500).json({ error: 'Failed to fetch market map data' });
   }
 });
 
@@ -1311,8 +1665,9 @@ const PLANNER_PROMPT = `You are an expert trading planner for indices (US30, NAS
 Given the following information:
 1. CHART ANALYSIS - Technical analysis of uploaded charts
 2. STOCK TRENDS - How major component stocks are performing
-3. MARKET NEWS - Recent news affecting the markets
-4. ECONOMIC CALENDAR - High-impact economic events
+3. MARKET HEATMAP - Market sector performance and breadth analysis
+4. MARKET NEWS - Recent news affecting the markets
+5. ECONOMIC CALENDAR - High-impact economic events
 
 Create a comprehensive but concise trading plan with the following structure:
 
@@ -1326,9 +1681,15 @@ Create a comprehensive but concise trading plan with the following structure:
 
 ### KEY FACTORS
 1. **Technical:** [Brief summary of chart analysis]
-2. **Sentiment:** [Stock performance summary]
-3. **Fundamentals:** [News impact summary]
-4. **Events:** [High-impact events to watch]
+2. **Market Breadth:** [Heatmap analysis - gainers vs losers, sector momentum]
+3. **Sentiment:** [Stock performance summary]
+4. **Fundamentals:** [News impact summary]
+5. **Events:** [High-impact events to watch]
+
+### MARKET HEATMAP INSIGHTS
+- **Breadth Indicator:** [Analysis of market strength based on gainers/losers ratio]
+- **Sector Momentum:** [Which sectors leading/lagging and implications]
+- **Confirmation:** [How heatmap confirms or conflicts with chart analysis]
 
 ### ACTION PLAN
 - **Primary Direction:** [LONG / SHORT / WAIT]
@@ -1339,14 +1700,15 @@ Create a comprehensive but concise trading plan with the following structure:
   - Take Profit 2: [price]
 
 ### RISK WARNINGS
-[List any major risks or events that could invalidate the plan]
+[List any major risks or events that could invalidate the plan, especially breadth divergences]
 
 ### SESSION TIMING
 [Best times to trade based on events and volatility]
 
-Be specific, actionable, and conservative with risk management.`;
+Be specific, actionable, and conservative with risk management. Use market heatmap breadth as confirmation of trend strength.`;
 
-async function generateTradingPlan(pair) {
+
+async function generateTradingPlan(pair, additionalData = {}) {
   if (!groqAI) {
     throw new Error('GROQ_API_KEY is required for the Planner');
   }
@@ -1361,7 +1723,7 @@ async function generateTradingPlan(pair) {
   // Step 1: Gather all data sources in parallel
   const startTime = Date.now();
   
-  const [chartAnalyses, stockData, newsData, economicCalendar] = await Promise.all([
+  const [chartAnalyses, stockData, newsData, economicCalendar, mapData] = await Promise.all([
     // Chart analysis
     (async () => {
       try {
@@ -1413,7 +1775,19 @@ async function generateTradingPlan(pair) {
     })(),
     
     // Economic calendar placeholder
-    Promise.resolve({ today: [], upcoming: [], allHighImpact: [] })
+    Promise.resolve({ today: [], upcoming: [], allHighImpact: [] }),
+    
+    // Market map data
+    (async () => {
+      try {
+        if (additionalData.map && additionalData.map.sectors) {
+          return { status: 'success', data: additionalData.map };
+        }
+        return { status: 'no_data', message: 'No heatmap data available' };
+      } catch (e) {
+        return { status: 'error', message: e.message };
+      }
+    })()
   ]);
   
   // Step 2: Build context for AI
@@ -1438,6 +1812,30 @@ async function generateTradingPlan(pair) {
     });
   } else {
     context += `${stockData.message || 'Stock data unavailable'}\n`;
+  }
+  context += '\n';
+  
+  // Market Heatmap Analysis
+  context += '=== MARKET HEATMAP ANALYSIS ===\n';
+  if (mapData.status === 'success' && mapData.data.sectors) {
+    const sectors = mapData.data.sectors;
+    const gainers = sectors.filter(s => s.change > 0);
+    const losers = sectors.filter(s => s.change < 0);
+    const avgChange = (sectors.reduce((sum, s) => sum + s.change, 0) / sectors.length).toFixed(2);
+    
+    context += `Market Direction: ${gainers.length > losers.length ? 'BULLISH' : 'BEARISH'}\n`;
+    context += `Gainers: ${gainers.length} | Losers: ${losers.length}\n`;
+    context += `Average Change: ${avgChange}%\n\n`;
+    context += `Strongest Gainers:\n`;
+    gainers.sort((a, b) => b.change - a.change).slice(0, 5).forEach(s => {
+      context += `- ${s.symbol}: +${s.change.toFixed(2)}%\n`;
+    });
+    context += `\nStrongest Losers:\n`;
+    losers.sort((a, b) => a.change - b.change).slice(0, 5).forEach(s => {
+      context += `- ${s.symbol}: ${s.change.toFixed(2)}%\n`;
+    });
+  } else {
+    context += `${mapData.message || 'No heatmap data available'}\n`;
   }
   context += '\n';
   
@@ -1513,13 +1911,13 @@ async function generateTradingPlan(pair) {
 // Planner API endpoint
 app.post('/api/planner/generate', async (req, res) => {
   try {
-    const { pair } = req.body;
+    const { pair, charts, stocks, news, map } = req.body;
     
     if (!pair || !TRADING_PAIRS[pair.toUpperCase()]) {
       return res.status(400).json({ error: 'Invalid trading pair' });
     }
     
-    const plan = await generateTradingPlan(pair);
+    const plan = await generateTradingPlan(pair, { charts, stocks, news, map });
     res.json(plan);
   } catch (error) {
     console.error('Planner error:', error);
