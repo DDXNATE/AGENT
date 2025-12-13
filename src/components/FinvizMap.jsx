@@ -135,7 +135,7 @@ function FinvizMap({ selectedPair }) {
       <div className="finviz-map-container">
         <div className="map-loading">
           <div className="spinner"></div>
-          <p>Loading live market data for {selectedPair}...</p>
+          <p>Agent Pippy loading {selectedPair} data...</p>
         </div>
       </div>
     );
@@ -156,8 +156,8 @@ function FinvizMap({ selectedPair }) {
     <div className="finviz-map-container">
       <div className="map-header-section">
         <div className="map-title">
-          <h2>Market Heatmap - {selectedPair}</h2>
-          <p className="map-subtitle">Real-time live market data from Finnhub</p>
+          <h2>Agent Pippy - {selectedPair}</h2>
+          <p className="map-subtitle">Live Market Heatmap</p>
         </div>
         <div className="map-stats">
           <div className="stat">
@@ -219,11 +219,10 @@ function FinvizMap({ selectedPair }) {
                   }}
                   onMouseEnter={() => {}}
                   onMouseLeave={() => {}}
-                  title={`${stock.name}: $${stock.price.toFixed(2)} (${isPositive ? '+' : ''}${stock.changePercent.toFixed(2)}%)`}
+                  title={`$${stock.price.toFixed(2)} (${isPositive ? '+' : ''}${stock.changePercent.toFixed(2)}%)`}
                 >
                   <div className="item-content">
                     <div className="stock-symbol">{stock.symbol}</div>
-                    <div className="stock-name">{stock.name}</div>
                     {stock.price > 0 && <div className="stock-price">${stock.price.toFixed(2)}</div>}
                     <div className="stock-change" style={{ color: isPositive ? '#4CAF50' : '#F44336' }}>
                       {isPositive ? '▲' : '▼'} {Math.abs(stock.changePercent).toFixed(2)}%
@@ -249,7 +248,7 @@ function FinvizMap({ selectedPair }) {
       </div>
 
       <div className="map-info">
-        <p>✓ Real data only | Finnhub API | Updates every 60 seconds</p>
+        <p>Agent Pippy | Live Market Data | Updates every 60 seconds</p>
       </div>
     </div>
   );
