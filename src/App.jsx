@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect } from 'react'
 import './App.css'
-import AuthPage from './components/AuthPage'
 import FinvizMap from './components/FinvizMap'
 import '../src/styles/FinvizMap.css'
-import { signOut, onAuthStateChange } from './utils/supabase'
+import soundManager from './utils/soundManager'
+import { onAuthStateChange, getCurrentUser, signOut } from './utils/supabase'
+import AuthPage from './components/AuthPage'
 
 const TRADING_PAIRS = ['US30', 'NAS100', 'SPX500'];
 const TIMEFRAMES = ['15m', '1hr', '4hr', 'daily'];
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState(null)
-  const [checkingAuth, setCheckingAuth] = useState(true)
+  const [session, setSession] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -34,7 +34,7 @@ function App() {
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  console.log('🤖 App component mounted, checkingAuth:', checkingAuth, 'isAuthenticated:', isAuthenticated)
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -44,43 +44,33 @@ function App() {
     scrollToBottom()
   }, [messages])
 
-  // Setup Supabase auth listener
   useEffect(() => {
-    console.log('🔐 Setting up auth listener...')
-    try {
-      const { data: { subscription } } = onAuthStateChange((event, session) => {
-        console.log('🔐 Auth state changed:', event, !!session)
-        if (session) {
-          setUser({
-            id: session.user.id,
-            email: session.user.email,
-            username: session.user.user_metadata?.username || session.user.email
-          })
-          setIsAuthenticated(true)
-        } else {
-          setUser(null)
-          setIsAuthenticated(false)
-          setMessages([])
-        }
-        setCheckingAuth(false)
-      })
+    // Check active session
+    getCurrentUser().then(user => {
+      setSession(user)
+      setAuthLoading(false)
+    })
 
-      // Timeout fallback - if auth check takes too long, continue anyway
-      const timeout = setTimeout(() => {
-        console.log('⏱️ Auth check timeout - forcing load')
-        setCheckingAuth(false)
-        setIsAuthenticated(false)
-      }, 2000)
+    const { data: { subscription } } = onAuthStateChange((event, session) => {
+      setSession(session?.user ?? null)
+      setAuthLoading(false)
+    })
 
-      return () => {
-        clearTimeout(timeout)
-        subscription?.unsubscribe?.()
-      }
-    } catch (error) {
-      console.error('❌ Auth setup error:', error)
-      setCheckingAuth(false)
-    }
+    return () => subscription.unsubscribe()
   }, [])
+
+  const handleSignOut = async () => {
+    await signOut()
+    setSession(null)
+    setMessages([])
+    soundManager.click()
+  }
+
+  // Hooks run here (unconditionally) 
+  // But since we have more hooks below, we cannot return here.
+  // Instead, we will handle the conditional rendering in the JSX.
+
+
 
   useEffect(() => {
     if (activeTab === 'stocks') {
@@ -174,9 +164,9 @@ function App() {
       })
       const data = await response.json()
       if (data.success) {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: `**Quick Analysis - ${selectedPair} ${timeframe}:**\n\n${data.analysis}\n\n_Processed in ${data.processingTimeMs}ms_` 
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: `**Quick Analysis - ${selectedPair} ${timeframe}:**\n\n${data.analysis}\n\n_Processed in ${data.processingTimeMs}ms_`
         }])
         setActiveTab('chat')
       }
@@ -208,16 +198,16 @@ function App() {
         fetch(`/api/news/${selectedPair}`),
         fetch(`/api/market-map/${selectedPair}`)
       ])
-      
+
       const charts = await chartsRes.json()
       const stocks = await stocksRes.json()
       const news = await newsRes.json()
       const map = await mapRes.json()
-      
+
       const response = await fetch('/api/planner/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           pair: selectedPair,
           charts: charts,
           stocks: stocks,
@@ -277,6 +267,9 @@ function App() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setIsLoading(true)
 
+    // Play message send sound
+    soundManager.messageSend()
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -291,25 +284,28 @@ function App() {
       const data = await response.json()
 
       if (response.ok) {
-        setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
-        
+        if (data.response) {
+          setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+          // Play AI response sound
+          soundManager.messageReceive()
+        }
         // If a trade action was performed, refresh the trades list
         if (data.tradeAction && data.tradeAction.success) {
           fetchTrades()
           fetchTradeStats()
         }
       } else {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
+        setMessages(prev => [...prev, {
+          role: 'assistant',
           content: data.error || 'Sorry, I encountered an error. Please try again.',
-          error: true 
+          error: true
         }])
       }
     } catch (error) {
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
         content: 'Unable to connect. Please check your connection and try again.',
-        error: true 
+        error: true
       }])
     } finally {
       setIsLoading(false)
@@ -323,40 +319,25 @@ function App() {
     { label: 'Trading setup', cmd: `Hey Pippy, what trading setups do you see for ${selectedPair}?` }
   ]
 
-  const handleAuthSuccess = (userData) => {
-    setUser(userData)
-    setIsAuthenticated(true)
-  }
 
-  const handleLogout = async () => {
-    try {
-      await signOut()
-      setUser(null)
-      setIsAuthenticated(false)
-      setMessages([])
-    } catch (error) {
-      console.error('Logout error:', error)
-    }
-  }
 
-  if (checkingAuth) {
-    console.log('⏳ Rendering loading screen...')
+
+
+  console.log('✅ Rendering app...')
+
+  if (authLoading) {
     return (
-      <div className="app-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#1a1a1a' }}>
-        <div style={{ textAlign: 'center', color: '#fff' }}>
-          <div className="loading-spinner"></div>
-          <p style={{ marginTop: '20px', fontSize: '16px' }}>Loading Application...</p>
-        </div>
+      <div className="app-loading">
+        <div className="spinner-large"></div>
+        <p>Initializing Secure Session...</p>
       </div>
     )
   }
 
-  if (!isAuthenticated) {
-    console.log('🔓 Rendering AuthPage...')
-    return <AuthPage onAuthSuccess={handleAuthSuccess} />
+  if (!session) {
+    return <AuthPage onAuthSuccess={(user) => setSession(user)} />
   }
 
-  console.log('✅ Rendering authenticated app...')
   return (
     <div className="app-container">
       <header className="header">
@@ -365,60 +346,84 @@ function App() {
             <h1>Agent Pippy</h1>
             <p className="subtitle">AI Trading Assistant</p>
           </div>
-          <div className="header-user-section">
-            <div className="user-info">
-              <span className="user-name">{user?.username || 'User'}</span>
-              <button onClick={handleLogout} className="logout-btn">Logout</button>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div className="pair-selector">
               {TRADING_PAIRS.map(pair => (
                 <button
                   key={pair}
                   className={`pair-btn ${selectedPair === pair ? 'active' : ''}`}
-                  onClick={() => setSelectedPair(pair)}
+                  onClick={() => {
+                    soundManager.click()
+                    setSelectedPair(pair)
+                  }}
                 >
                   {pair}
                 </button>
               ))}
             </div>
+            <button
+              className="sign-out-btn"
+              onClick={handleSignOut}
+              title="Sign Out"
+            >
+              Sign Out
+            </button>
           </div>
         </div>
       </header>
 
       <nav className="tab-nav">
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'chat' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chat')}
+          onClick={() => {
+            soundManager.tabSwitch()
+            setActiveTab('chat')
+          }}
         >
           Chat
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'charts' ? 'active' : ''}`}
-          onClick={() => setActiveTab('charts')}
+          onClick={() => {
+            soundManager.tabSwitch()
+            setActiveTab('charts')
+          }}
         >
           Charts
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'stocks' ? 'active' : ''}`}
-          onClick={() => setActiveTab('stocks')}
+          onClick={() => {
+            soundManager.tabSwitch()
+            setActiveTab('stocks')
+          }}
         >
           Screener
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'map' ? 'active' : ''}`}
-          onClick={() => setActiveTab('map')}
+          onClick={() => {
+            soundManager.tabSwitch()
+            setActiveTab('map')
+          }}
         >
           Map
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'news' ? 'active' : ''}`}
-          onClick={() => setActiveTab('news')}
+          onClick={() => {
+            soundManager.tabSwitch()
+            setActiveTab('news')
+          }}
         >
           News
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'planner' ? 'active' : ''}`}
-          onClick={() => setActiveTab('planner')}
+          onClick={() => {
+            soundManager.tabSwitch()
+            setActiveTab('planner')
+          }}
         >
           Planner
         </button>
@@ -429,23 +434,26 @@ function App() {
           <div className="chat-section">
             <div className="quick-commands">
               {quickCommands.map((qc, i) => (
-                <button 
-                  key={i} 
+                <button
+                  key={i}
                   className="quick-cmd-btn"
-                  onClick={() => setInput(qc.cmd)}
+                  onClick={() => {
+                    soundManager.click()
+                    setInput(qc.cmd)
+                  }}
                 >
                   {qc.label}
                 </button>
               ))}
             </div>
-            
+
             <div className="chat-container">
               <div className="messages-container">
                 {messages.length === 0 && (
                   <div className="welcome-message">
                     <h2>Hey there! I'm Pippy</h2>
                     <p>
-                      Your AI trading assistant for <strong>{selectedPair}</strong>. 
+                      Your AI trading assistant for <strong>{selectedPair}</strong>.
                       Upload your charts, check live stock prices, or ask me anything about trading!
                     </p>
                     <div className="welcome-features">
@@ -464,10 +472,10 @@ function App() {
                     </div>
                   </div>
                 )}
-                
+
                 {messages.map((msg, index) => (
-                  <div 
-                    key={index} 
+                  <div
+                    key={index}
                     className={`message ${msg.role} ${msg.error ? 'error' : ''}`}
                   >
                     {msg.role === 'assistant' && <span className="msg-label">Pippy</span>}
@@ -475,7 +483,7 @@ function App() {
                     <div className="msg-content">{msg.content}</div>
                   </div>
                 ))}
-                
+
                 {isLoading && (
                   <div className="typing-indicator">
                     <span className="msg-label">Pippy is thinking...</span>
@@ -486,7 +494,7 @@ function App() {
                     </div>
                   </div>
                 )}
-                
+
                 <div ref={messagesEndRef} />
               </div>
 
@@ -511,8 +519,8 @@ function App() {
             <div className="upload-section">
               <h3>Upload Chart for {selectedPair}</h3>
               <div className="upload-controls">
-                <select 
-                  value={uploadTimeframe} 
+                <select
+                  value={uploadTimeframe}
                   onChange={(e) => setUploadTimeframe(e.target.value)}
                   className="timeframe-select"
                 >
@@ -531,7 +539,7 @@ function App() {
                     hidden
                   />
                 </label>
-                <button 
+                <button
                   className={`analyze-btn ${analyzing ? 'loading' : ''}`}
                   onClick={() => analyzeCharts()}
                   disabled={analyzing || Object.keys(charts).length === 0}
@@ -573,7 +581,7 @@ function App() {
                   <div className="chart-section-header">
                     <h4>{tf.toUpperCase()} Charts</h4>
                     {charts[tf]?.length > 0 && (
-                      <button 
+                      <button
                         className="quick-analyze-btn"
                         onClick={() => quickAnalysis(tf)}
                         disabled={analyzing}
@@ -607,7 +615,7 @@ function App() {
             <div className="stocks-header">
               <h3>Major Stocks - {selectedPair}</h3>
               <div className="stocks-controls">
-                <button 
+                <button
                   className={`refresh-btn ${stocksLoading ? 'loading' : ''}`}
                   onClick={() => fetchStocks(selectedPair)}
                   disabled={stocksLoading}
@@ -615,16 +623,16 @@ function App() {
                   {stocksLoading ? 'Refreshing...' : 'Refresh'}
                 </button>
                 <label className="auto-refresh-toggle">
-                  <input 
-                    type="checkbox" 
-                    checked={autoRefresh} 
-                    onChange={(e) => setAutoRefresh(e.target.checked)} 
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
                   />
                   Auto-refresh (30s)
                 </label>
               </div>
             </div>
-            
+
             {stocksMeta && (
               <div className="market-status-bar">
                 <div className={`market-indicator ${stocksMeta.marketStatus?.isOpen ? 'open' : 'closed'}`}>
@@ -642,7 +650,7 @@ function App() {
                 </div>
               </div>
             )}
-            
+
             {stocksLoading && stocks.length === 0 ? (
               <div className="loading-spinner">Loading live prices...</div>
             ) : (
@@ -691,21 +699,44 @@ function App() {
             ) : (
               <div className="news-list">
                 {news.map((item, i) => (
-                  <a 
-                    key={i} 
-                    href={item.url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="news-card"
-                  >
-                    <div className="news-meta">
-                      <span className="news-symbol">{item.symbol}</span>
-                      <span className="news-source">{item.source}</span>
-                      <span className="news-date">{item.datetime}</span>
+                  item.type === 'social' ? (
+                    // Social / AI Tweet Card
+                    <div key={i} className="news-card social" onClick={() => window.open(item.url, '_blank')}>
+                      <div className="tweet-header">
+                        <div className="tweet-avatar">{item.source[1]}</div>
+                        <div className="tweet-meta">
+                          <span className="tweet-source">
+                            {item.source} <span className="verified-badge">✔</span>
+                          </span>
+                          <span className="tweet-handle">@analyst_ai • {item.datetime === 'Just now' ? 'Now' : new Date(item.datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <div className="virality-badge">🔥 {item.virality}% Viral</div>
+                      </div>
+                      <div className="tweet-content">{item.headline}</div>
+                      {item.summary && (
+                        <div className="tweet-ai-note">
+                          <span>🤖</span> {item.summary}
+                        </div>
+                      )}
                     </div>
-                    <h4 className="news-headline">{item.headline}</h4>
-                    <p className="news-summary">{item.summary?.slice(0, 200)}...</p>
-                  </a>
+                  ) : (
+                    // Standard News Card
+                    <a
+                      key={i}
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="news-card"
+                    >
+                      <div className="news-meta">
+                        <span className="news-symbol">{item.symbol}</span>
+                        <span className="news-source">{item.source}</span>
+                        <span className="news-date">{item.datetime}</span>
+                      </div>
+                      <h4 className="news-headline">{item.headline}</h4>
+                      <p className="news-summary">{item.summary?.slice(0, 200)}...</p>
+                    </a>
+                  )
                 ))}
                 {news.length === 0 && !newsLoading && (
                   <p className="no-data">No news available. Check API connection.</p>
@@ -728,7 +759,7 @@ function App() {
                   <h2 className="planner-pair-subtitle">{selectedPair}</h2>
                   <p className="planner-description">AI-powered daily trading strategy based on real-time market analysis</p>
                 </div>
-                <button 
+                <button
                   className={`generate-plan-btn-pro ${plannerLoading ? 'loading' : ''}`}
                   onClick={generatePlan}
                   disabled={plannerLoading}
@@ -755,7 +786,7 @@ function App() {
                 <div className="source-value">{plannerStatus?.status?.chartCount || 0} charts</div>
                 <div className="source-status-badge">{plannerStatus?.status?.charts === 'ready' ? '✓ Ready' : '⚠ Missing'}</div>
               </div>
-              
+
               <div className={`data-source-card ${plannerStatus?.status?.geminiAI === 'ready' ? 'ready' : 'pending'}`}>
                 <div className="source-header">
                   <span className="source-icon">🤖</span>
@@ -764,7 +795,7 @@ function App() {
                 <div className="source-value">Gemini API</div>
                 <div className="source-status-badge">{plannerStatus?.status?.geminiAI === 'ready' ? '✓ Ready' : '⚠ Configure'}</div>
               </div>
-              
+
               <div className={`data-source-card ${plannerStatus?.status?.finnhub === 'ready' ? 'ready' : 'pending'}`}>
                 <div className="source-header">
                   <span className="source-icon">💹</span>
@@ -883,7 +914,7 @@ function App() {
                   <div className="empty-icon-large">📅</div>
                   <h2>Ready to Generate Your Trading Plan?</h2>
                   <p>Click the button above to create an AI-powered trading strategy based on your charts and market analysis</p>
-                  
+
                   <div className="empty-requirements">
                     <h4>Requirements:</h4>
                     <div className="req-item">

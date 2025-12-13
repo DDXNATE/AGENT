@@ -267,7 +267,7 @@ export default function AuthPage({ onAuthSuccess }) {
 
         {/* Demo Mode Info */}
         <div className="demo-info">
-          <p>💡 <strong>Demo Mode:</strong> Use any email/password to test</p>
+          <p>💡 <strong>Demo Mode Enabled:</strong> Log in with ANY email/password.</p>
         </div>
       </div>
     </div>

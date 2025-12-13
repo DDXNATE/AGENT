@@ -1,9 +1,9 @@
 .finviz-map-container {
   width: 100%;
   padding: 20px;
-  background: linear-gradient(135deg, rgba(30, 0, 60, 0.5) 0%, rgba(10, 0, 30, 0.5) 100%);
+  background: var(--secondary-bg);
   border-radius: 12px;
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -17,13 +17,13 @@
   gap: 30px;
   flex-wrap: wrap;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .map-title h2 {
   margin: 0 0 8px 0;
   font-size: 1.8rem;
-  background: linear-gradient(135deg, var(--neon-green), var(--neon-green-soft));
+  background: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-hover));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -47,8 +47,8 @@
   gap: 4px;
   text-align: center;
   padding: 12px 16px;
-  background: rgba(102, 126, 234, 0.05);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   min-width: 100px;
 }
@@ -64,15 +64,17 @@
 .stat-value {
   font-size: 1.4rem;
   font-weight: 700;
-  color: var(--neon-green);
+  color: var(--accent-orange);
 }
 
 .stat-value.gainers {
-  color: #4CAF50;
+  color: #39FF14;
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.6);
 }
 
 .stat-value.losers {
-  color: #F44336;
+  color: #FF073A;
+  text-shadow: 0 0 10px rgba(255, 7, 58, 0.6);
 }
 
 .map-controls {
@@ -97,7 +99,7 @@
 
 .auto-refresh-toggle input {
   cursor: pointer;
-  accent-color: var(--neon-green);
+  accent-color: var(--accent-orange);
 }
 
 .treemap-container {
@@ -225,23 +227,25 @@
 }
 
 .strong-gain::before {
-  background: rgba(76, 175, 80, 1);
+  background: #39FF14;
+  box-shadow: 0 0 8px rgba(57, 255, 20, 0.6);
 }
 
 .moderate-gain::before {
-  background: rgba(76, 175, 80, 0.6);
+  background: rgba(57, 255, 20, 0.6);
 }
 
 .neutral::before {
-  background: rgba(102, 126, 234, 0.3);
+  background: rgba(139, 92, 246, 0.3);
 }
 
 .moderate-loss::before {
-  background: rgba(244, 67, 54, 0.6);
+  background: rgba(255, 7, 58, 0.6);
 }
 
 .strong-loss::before {
-  background: rgba(244, 67, 54, 1);
+  background: #FF073A;
+  box-shadow: 0 0 8px rgba(255, 7, 58, 0.6);
 }
 
 .map-actions {
@@ -252,8 +256,8 @@
 
 .refresh-button {
   padding: 10px 24px;
-  background: linear-gradient(135deg, var(--neon-green), var(--neon-green-soft));
-  color: var(--neon-purple-deep);
+  background: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-hover));
+  color: var(--text-primary);
   border: none;
   border-radius: 8px;
   font-weight: 700;
@@ -264,7 +268,7 @@
 
 .refresh-button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(198, 255, 0, 0.4);
+  box-shadow: 0 8px 20px var(--accent-orange-glow);
 }
 
 .refresh-button:disabled {
@@ -285,8 +289,8 @@
 .spinner {
   width: 50px;
   height: 50px;
-  border: 4px solid rgba(102, 126, 234, 0.2);
-  border-top-color: var(--neon-green);
+  border: 4px solid rgba(255, 106, 0, 0.2);
+  border-top-color: var(--accent-orange);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -308,8 +312,8 @@
 
 .retry-btn {
   padding: 10px 20px;
-  background: linear-gradient(135deg, var(--neon-green), var(--neon-green-soft));
-  color: var(--neon-purple-deep);
+  background: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-hover));
+  color: var(--text-primary);
   border: none;
   border-radius: 6px;
   font-weight: 600;
@@ -319,7 +323,7 @@
 
 .retry-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(198, 255, 0, 0.4);
+  box-shadow: 0 8px 20px var(--accent-orange-glow);
 }
 
 /* Responsive Design */

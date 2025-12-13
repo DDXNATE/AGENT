@@ -28,13 +28,13 @@ function FinvizMap({ selectedPair }) {
         throw new Error(`Failed to fetch data: ${response.status}`);
       }
       const data = await response.json();
-      
+
       if (!data.stocks || data.stocks.length === 0) {
         setError('No market data available');
         setLoading(false);
         return;
       }
-      
+
       setMapData({
         pair: data.pair,
         stocks: data.stocks,
@@ -93,7 +93,7 @@ function FinvizMap({ selectedPair }) {
           </div>
           <div className="stat">
             <span className="stat-label">Avg Change</span>
-            <span className="stat-value" style={{ color: (mapData?.meta?.avgChange || 0) >= 0 ? '#4CAF50' : '#F44336' }}>
+            <span className="stat-value" style={{ color: (mapData?.meta?.avgChange || 0) >= 0 ? '#39FF14' : '#FF073A' }}>
               {(mapData?.meta?.avgChange || 0) >= 0 ? '+' : ''}{mapData?.meta?.avgChange || 0}%
             </span>
           </div>
@@ -106,9 +106,9 @@ function FinvizMap({ selectedPair }) {
 
       <div className="map-controls">
         <label className="auto-refresh-toggle">
-          <input 
-            type="checkbox" 
-            checked={autoRefresh} 
+          <input
+            type="checkbox"
+            checked={autoRefresh}
             onChange={(e) => setAutoRefresh(e.target.checked)}
           />
           Auto-refresh every 60s
@@ -132,16 +132,16 @@ function FinvizMap({ selectedPair }) {
                   className="treemap-item"
                   style={{
                     backgroundColor: isPositive
-                      ? `rgba(76, 175, 80, ${0.2 + intensity * 0.8})`
-                      : `rgba(244, 67, 54, ${0.2 + intensity * 0.8})`,
-                    borderColor: isPositive ? '#4CAF50' : '#F44336'
+                      ? `rgba(57, 255, 20, ${0.2 + intensity * 0.8})`
+                      : `rgba(255, 7, 58, ${0.2 + intensity * 0.8})`,
+                    borderColor: isPositive ? '#39FF14' : '#FF073A'
                   }}
                   title={`$${stock.price.toFixed(2)} (${isPositive ? '+' : ''}${stock.changePercent.toFixed(2)}%)`}
                 >
                   <div className="item-content">
                     <div className="stock-symbol">{stock.symbol}</div>
                     {stock.price > 0 && <div className="stock-price">${stock.price.toFixed(2)}</div>}
-                    <div className="stock-change" style={{ color: isPositive ? '#4CAF50' : '#F44336' }}>
+                    <div className="stock-change" style={{ color: isPositive ? '#39FF14' : '#FF073A' }}>
                       {isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%
                     </div>
                   </div>

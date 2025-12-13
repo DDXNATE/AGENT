@@ -37,7 +37,7 @@ if (!fs.existsSync(uploadsDir)) {
 const ALLOWED_PAIRS = ['US30', 'NAS100', 'SPX500'];
 const ALLOWED_TIMEFRAMES = ['15m', '1hr', '4hr', 'daily'];
 
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
@@ -264,17 +264,17 @@ const INDEX_CACHE_TTL = 60000;
 async function fetchIndexPrice(pair) {
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
   if (!pairInfo) return null;
-  
+
   const cacheKey = `index_${pair}`;
   const cached = indexCache.get(cacheKey);
-  
+
   if (cached && (Date.now() - cached.fetchedAt) < INDEX_CACHE_TTL) {
     return { ...cached.data, fromCache: true, cacheAge: Date.now() - cached.fetchedAt };
   }
-  
+
   try {
     const quote = await yahooFinance.quote(pairInfo.yahooSymbol);
-    
+
     if (!quote || !quote.regularMarketPrice) {
       console.warn(`No quote data for ${pairInfo.yahooSymbol}`);
       if (cached) {
@@ -282,7 +282,7 @@ async function fetchIndexPrice(pair) {
       }
       return null;
     }
-    
+
     const indexData = {
       pair: pair.toUpperCase(),
       name: pairInfo.name,
@@ -298,7 +298,7 @@ async function fetchIndexPrice(pair) {
       fetchedAt: Date.now(),
       fromCache: false
     };
-    
+
     indexCache.set(cacheKey, { data: indexData, fetchedAt: Date.now() });
     return indexData;
   } catch (error) {
@@ -332,7 +332,7 @@ async function queueFinnhubRequest(fn) {
 async function processQueue() {
   if (isProcessingQueue || requestQueue.length === 0) return;
   isProcessingQueue = true;
-  
+
   while (requestQueue.length > 0) {
     const { fn, resolve } = requestQueue.shift();
     try {
@@ -343,7 +343,7 @@ async function processQueue() {
     }
     await new Promise(r => setTimeout(r, RATE_LIMIT_DELAY));
   }
-  
+
   isProcessingQueue = false;
 }
 
@@ -354,12 +354,12 @@ function isMarketOpen() {
   const hours = nyTime.getHours();
   const minutes = nyTime.getMinutes();
   const timeInMinutes = hours * 60 + minutes;
-  
+
   if (day === 0 || day === 6) return false;
-  
+
   const marketOpen = 9 * 60 + 30;
   const marketClose = 16 * 60;
-  
+
   return timeInMinutes >= marketOpen && timeInMinutes < marketClose;
 }
 
@@ -370,23 +370,23 @@ function getMarketStatus() {
   const hours = nyTime.getHours();
   const minutes = nyTime.getMinutes();
   const timeInMinutes = hours * 60 + minutes;
-  
+
   if (day === 0) {
     return { isOpen: false, status: 'Weekend - Market Closed', nextOpen: 'Monday 9:30 AM ET' };
   }
-  
+
   if (day === 6) {
     return { isOpen: false, status: 'Weekend - Market Closed', nextOpen: 'Monday 9:30 AM ET' };
   }
-  
+
   const marketOpen = 9 * 60 + 30;
   const marketClose = 16 * 60;
   const preMarketOpen = 4 * 60;
   const afterHoursClose = 20 * 60;
-  
+
   const isFriday = day === 5;
   const nextOpenDay = isFriday ? 'Monday' : 'Tomorrow';
-  
+
   if (timeInMinutes >= marketOpen && timeInMinutes < marketClose) {
     return { isOpen: true, status: 'Market Open', nextClose: '4:00 PM ET' };
   } else if (timeInMinutes >= preMarketOpen && timeInMinutes < marketOpen) {
@@ -403,16 +403,16 @@ function getMarketStatus() {
 
 function validateQuoteData(data) {
   if (!data || typeof data !== 'object') return null;
-  
+
   const requiredFields = ['c', 'h', 'l', 'o', 'pc'];
   for (const field of requiredFields) {
     if (data[field] === undefined || data[field] === null || data[field] === 0) {
       return null;
     }
   }
-  
+
   if (data.c <= 0 || data.h < data.l) return null;
-  
+
   return data;
 }
 
@@ -477,16 +477,16 @@ Max 100 words. No intro. Just analysis.`;
 async function fetchStockQuote(symbol, retryCount = 0) {
   const cacheKey = `quote_${symbol}`;
   const cached = stockCache.get(cacheKey);
-  
+
   if (cached && (Date.now() - cached.fetchedAt) < CACHE_TTL) {
     return { ...cached.data, fromCache: true, cacheAge: Date.now() - cached.fetchedAt };
   }
-  
+
   try {
     // Use rate limiting queue
     return await queueFinnhubRequest(async () => {
       const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
-      
+
       if (!response.ok) {
         if (response.status === 429 && retryCount < 1) {
           // Skip retries for now due to rate limiting
@@ -494,10 +494,10 @@ async function fetchStockQuote(symbol, retryCount = 0) {
         }
         throw new Error(`API returned ${response.status}`);
       }
-      
+
       const data = await response.json();
       const validatedData = validateQuoteData(data);
-      
+
       if (!validatedData) {
         console.warn(`Invalid data received for ${symbol}:`, data);
         if (cached) {
@@ -505,7 +505,7 @@ async function fetchStockQuote(symbol, retryCount = 0) {
         }
         return null;
       }
-      
+
       const quoteData = {
         symbol,
         currentPrice: parseFloat(validatedData.c.toFixed(2)),
@@ -520,19 +520,19 @@ async function fetchStockQuote(symbol, retryCount = 0) {
         marketStatus: getMarketStatus(),
         fromCache: false
       };
-      
+
       stockCache.set(cacheKey, { data: quoteData, fetchedAt: Date.now() });
-      
+
       return quoteData;
     });
   } catch (error) {
     console.error(`Error fetching quote for ${symbol}:`, error.message);
-    
+
     // Return cached data even if stale
     if (cached) {
       return { ...cached.data, fromCache: true, stale: true, error: error.message };
     }
-    
+
     return null;
   }
 }
@@ -542,10 +542,10 @@ async function fetchCompanyNews(symbol, daysBack = 7) {
     const today = new Date();
     const fromDate = new Date(today);
     fromDate.setDate(fromDate.getDate() - daysBack);
-    
+
     const from = fromDate.toISOString().split('T')[0];
     const to = today.toISOString().split('T')[0];
-    
+
     const response = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${FINNHUB_KEY}`);
     const data = await response.json();
     return data.slice(0, 5).map(news => ({
@@ -583,43 +583,43 @@ app.post('/api/upload-chart', upload.single('chart'), (req, res) => {
   try {
     const { pair, timeframe } = req.body;
     const file = req.file;
-    
+
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    
+
     if (!pair || !timeframe) {
       return res.status(400).json({ error: 'Pair and timeframe are required' });
     }
-    
+
     const sanitizedPair = pair.toUpperCase();
     const sanitizedTimeframe = timeframe.toLowerCase();
-    
+
     if (!ALLOWED_PAIRS.includes(sanitizedPair)) {
       return res.status(400).json({ error: 'Invalid trading pair. Must be US30, NAS100, or SPX500' });
     }
-    
+
     if (!ALLOWED_TIMEFRAMES.includes(sanitizedTimeframe)) {
       return res.status(400).json({ error: 'Invalid timeframe. Must be 15m, 1hr, 4hr, or daily' });
     }
-    
+
     const pairDir = path.join(uploadsDir, sanitizedPair, sanitizedTimeframe);
     fs.mkdirSync(pairDir, { recursive: true });
-    
+
     const timestamp = Date.now();
     const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filename = `${timestamp}-${safeName}`;
     const filePath = path.join(pairDir, filename);
-    
+
     fs.writeFileSync(filePath, file.buffer);
-    
+
     if (!chartStorage[sanitizedPair]) {
       chartStorage[sanitizedPair] = {};
     }
     if (!chartStorage[sanitizedPair][sanitizedTimeframe]) {
       chartStorage[sanitizedPair][sanitizedTimeframe] = [];
     }
-    
+
     const chartInfo = {
       filename: filename,
       originalName: file.originalname,
@@ -628,9 +628,9 @@ app.post('/api/upload-chart', upload.single('chart'), (req, res) => {
       pair: sanitizedPair,
       timeframe: sanitizedTimeframe
     };
-    
+
     chartStorage[sanitizedPair][sanitizedTimeframe].push(chartInfo);
-    
+
     if (chartStorage[sanitizedPair][sanitizedTimeframe].length > 10) {
       const removed = chartStorage[sanitizedPair][sanitizedTimeframe].shift();
       const oldPath = path.join(uploadsDir, sanitizedPair, sanitizedTimeframe, removed.filename);
@@ -638,9 +638,9 @@ app.post('/api/upload-chart', upload.single('chart'), (req, res) => {
         fs.unlinkSync(oldPath);
       }
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: `Chart uploaded for ${sanitizedPair} (${sanitizedTimeframe})`,
       chart: chartInfo
     });
@@ -667,21 +667,21 @@ app.get('/api/market-status', (req, res) => {
 app.get('/api/index/:pair', async (req, res) => {
   const { pair } = req.params;
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
-  
+
   if (!pairInfo) {
     return res.status(404).json({ error: 'Trading pair not found' });
   }
-  
+
   try {
     const indexData = await fetchIndexPrice(pair);
-    
+
     if (!indexData) {
-      return res.status(503).json({ 
+      return res.status(503).json({
         error: 'Unable to fetch index price. Please try again.',
         pair: pair.toUpperCase()
       });
     }
-    
+
     res.json(indexData);
   } catch (error) {
     console.error('Error fetching index:', error);
@@ -694,9 +694,9 @@ app.get('/api/indices', async (req, res) => {
     const indices = await Promise.all(
       Object.keys(TRADING_PAIRS).map(pair => fetchIndexPrice(pair))
     );
-    
+
     const validIndices = indices.filter(idx => idx !== null);
-    
+
     res.json({
       indices: validIndices,
       meta: {
@@ -715,13 +715,13 @@ app.get('/api/indices', async (req, res) => {
 app.get('/api/stocks/:pair', async (req, res) => {
   const { pair } = req.params;
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
-  
+
   if (!pairInfo) {
     return res.status(404).json({ error: 'Trading pair not found' });
   }
-  
+
   const startTime = Date.now();
-  
+
   try {
     const quotes = await Promise.all(
       pairInfo.majorStocks.map(async (stock) => {
@@ -729,17 +729,17 @@ app.get('/api/stocks/:pair', async (req, res) => {
         if (!quote) {
           return { ...stock, currentPrice: null, change: null, percentChange: null, dataStatus: 'unavailable' };
         }
-        return { 
-          ...stock, 
+        return {
+          ...stock,
           ...quote,
           dataStatus: quote.stale ? 'stale' : (quote.fromCache ? 'cached' : 'live')
         };
       })
     );
-    
+
     const validStocks = quotes.filter(q => q.currentPrice !== null);
     const fetchTime = Date.now() - startTime;
-    
+
     res.json({
       pair: pair.toUpperCase(),
       pairName: pairInfo.name,
@@ -751,7 +751,7 @@ app.get('/api/stocks/:pair', async (req, res) => {
         totalStocks: pairInfo.majorStocks.length,
         availableStocks: validStocks.length,
         dataQuality: validStocks.filter(s => s.dataStatus === 'live').length === validStocks.length ? 'excellent' :
-                     validStocks.filter(s => s.dataStatus === 'stale').length > 0 ? 'degraded' : 'good'
+          validStocks.filter(s => s.dataStatus === 'stale').length > 0 ? 'degraded' : 'good'
       }
     });
   } catch (error) {
@@ -763,17 +763,17 @@ app.get('/api/stocks/:pair', async (req, res) => {
 // New endpoint for individual stock quotes (for the heatmap)
 app.get('/api/stocks-quote/:symbol', async (req, res) => {
   const { symbol } = req.params;
-  
+
   try {
     const quote = await fetchStockQuote(symbol.toUpperCase());
-    
+
     if (!quote) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Unable to fetch quote for symbol',
         symbol: symbol.toUpperCase()
       });
     }
-    
+
     res.json({
       symbol: quote.symbol,
       c: quote.currentPrice,
@@ -801,16 +801,16 @@ app.get('/api/stocks-select/:pair', async (req, res) => {
   const { pair } = req.params;
   console.log('[Stocks Select] Request for pair:', pair);
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
-  
+
   if (!pairInfo) {
     console.log('[Stocks Select] Pair not found:', pair.toUpperCase());
     return res.status(404).json({ error: 'Trading pair not found' });
   }
-  
+
   try {
     // Get all available stocks
     const allStocks = pairInfo.allStocks || pairInfo.majorStocks || [];
-    
+
     // If we don't have enough stocks, just return them as-is
     if (allStocks.length <= 30) {
       return res.json({
@@ -822,7 +822,7 @@ app.get('/api/stocks-select/:pair', async (req, res) => {
         lastUpdated: new Date().toISOString()
       });
     }
-    
+
     // Try to get live data for ranking
     const stocksWithData = await Promise.all(
       allStocks.slice(0, 40).map(async (stock) => {
@@ -843,18 +843,18 @@ app.get('/api/stocks-select/:pair', async (req, res) => {
         return null;
       })
     );
-    
+
     const validStocks = stocksWithData.filter(s => s !== null);
-    
+
     // Sort by absolute volatility (biggest movers)
-    const sortedByVolatility = validStocks.sort((a, b) => 
+    const sortedByVolatility = validStocks.sort((a, b) =>
       Math.abs(b.changePercent) - Math.abs(a.changePercent)
     );
-    
+
     // Select top 30 or use defaults
     let selectedStocks = allStocks.slice(0, 30);
     let selectionMethod = 'default';
-    
+
     if (sortedByVolatility.length >= 30) {
       selectedStocks = sortedByVolatility.slice(0, 30).map(s => ({
         symbol: s.symbol,
@@ -869,7 +869,7 @@ app.get('/api/stocks-select/:pair', async (req, res) => {
       }));
       selectionMethod = 'partial-data';
     }
-    
+
     res.json({
       pair: pair.toUpperCase(),
       pairName: pairInfo.name,
@@ -878,12 +878,12 @@ app.get('/api/stocks-select/:pair', async (req, res) => {
       selectionMethod: selectionMethod,
       lastUpdated: new Date().toISOString()
     });
-    
+
   } catch (error) {
     console.error('Error in stocks-select endpoint:', error);
     const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
     const fallbackStocks = (pairInfo.allStocks || pairInfo.majorStocks || []).slice(0, 30);
-    
+
     res.json({
       pair: pair.toUpperCase(),
       pairName: pairInfo.name,
@@ -899,11 +899,11 @@ app.get('/api/stocks-select/:pair', async (req, res) => {
 app.get('/api/market-map/:pair', async (req, res) => {
   const { pair } = req.params;
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
-  
+
   if (!pairInfo) {
     return res.status(404).json({ error: 'Trading pair not found' });
   }
-  
+
   try {
     const sectors = await Promise.all(
       pairInfo.majorStocks.map(async (stock) => {
@@ -927,7 +927,7 @@ app.get('/api/market-map/:pair', async (req, res) => {
         };
       })
     );
-    
+
     res.json({
       pair: pair.toUpperCase(),
       pairName: pairInfo.name,
@@ -950,15 +950,15 @@ app.get('/api/market-map/:pair', async (req, res) => {
 app.get('/api/screener/:pair', async (req, res) => {
   const { pair } = req.params;
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
-  
+
   if (!pairInfo) {
     return res.status(404).json({ error: 'Trading pair not found' });
   }
-  
+
   try {
     const allStocks = pairInfo.allStocks || pairInfo.majorStocks || [];
     console.log(`[Screener] Fetching data for ${pair} - ${allStocks.length} stocks`);
-    
+
     // Fetch real quotes using Yahoo Finance (more reliable for bulk)
     const stocksData = await Promise.all(
       allStocks.map(async (stock) => {
@@ -1002,20 +1002,20 @@ app.get('/api/screener/:pair', async (req, res) => {
         return { symbol: stock.symbol, valid: false };
       })
     );
-    
+
     // Filter valid stocks and sort by absolute change (biggest movers)
     const validStocks = stocksData
       .filter(s => s.valid && s.price > 0)
       .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
-    
+
     const gainers = validStocks.filter(s => s.changePercent > 0).length;
     const losers = validStocks.filter(s => s.changePercent < 0).length;
-    const avgChange = validStocks.length > 0 
+    const avgChange = validStocks.length > 0
       ? (validStocks.reduce((sum, s) => sum + s.changePercent, 0) / validStocks.length).toFixed(2)
       : 0;
-    
+
     console.log(`[Screener] ${pair}: ${validStocks.length} valid stocks, ${gainers} gainers, ${losers} losers`);
-    
+
     res.json({
       pair: pair.toUpperCase(),
       pairName: pairInfo.name,
@@ -1038,20 +1038,20 @@ app.get('/api/screener/:pair', async (req, res) => {
 app.get('/api/news/:pair', async (req, res) => {
   const { pair } = req.params;
   const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
-  
+
   if (!pairInfo) {
     return res.status(404).json({ error: 'Trading pair not found' });
   }
-  
+
   try {
     const topStocks = pairInfo.majorStocks.slice(0, 5);
     const newsPromises = topStocks.map(stock => fetchCompanyNews(stock.symbol));
     const allNews = await Promise.all(newsPromises);
-    
-    const flatNews = allNews.flat().sort((a, b) => 
+
+    const flatNews = allNews.flat().sort((a, b) =>
       new Date(b.datetime) - new Date(a.datetime)
     ).slice(0, 15);
-    
+
     res.json({
       pair: pair.toUpperCase(),
       pairName: pairInfo.name,
@@ -1096,17 +1096,17 @@ async function analyzeChartImage(imagePath, pair, timeframe, analysisType = 'ful
   if (!groqAI) {
     throw new Error('Groq API not configured for image analysis');
   }
-  
+
   const absolutePath = path.join(__dirname, imagePath.startsWith('/') ? imagePath.slice(1) : imagePath);
-  
+
   if (!fs.existsSync(absolutePath)) {
     throw new Error('Chart image not found');
   }
-  
+
   const imageBuffer = fs.readFileSync(absolutePath);
   const base64Image = imageBuffer.toString('base64');
   const mimeType = imagePath.endsWith('.png') ? 'image/png' : 'image/jpeg';
-  
+
   const contextPrompt = `
 Trading Pair: ${pair}
 Timeframe: ${timeframe}
@@ -1137,7 +1137,7 @@ ${analysisType === 'quick' ? FAST_ANALYSIS_PROMPT : CHART_ANALYSIS_PROMPT}`;
       ],
       max_tokens: 2000
     });
-    
+
     return {
       analysis: response.choices[0]?.message?.content || '',
       pair,
@@ -1159,21 +1159,21 @@ async function getSmartChartAnalysis(pair, timeframe = null) {
   if (!charts || Object.keys(charts).length === 0) {
     return null;
   }
-  
+
   const timeframes = timeframe ? [timeframe] : Object.keys(charts);
   const analyses = [];
-  
+
   for (const tf of timeframes) {
     if (charts[tf] && charts[tf].length > 0) {
       const latestChart = charts[tf][charts[tf].length - 1];
       const cacheKey = `${pair}_${tf}_${latestChart.filename}`;
-      
+
       const cached = analysisCache.get(cacheKey);
       if (cached && (Date.now() - cached.timestamp) < ANALYSIS_CACHE_TTL) {
         analyses.push(cached.data);
         continue;
       }
-      
+
       try {
         const analysis = await analyzeChartImage(latestChart.path, pair, tf, 'full');
         analysisCache.set(cacheKey, { data: analysis, timestamp: Date.now() });
@@ -1183,7 +1183,7 @@ async function getSmartChartAnalysis(pair, timeframe = null) {
       }
     }
   }
-  
+
   return analyses.length > 0 ? analyses : null;
 }
 
@@ -1202,14 +1202,14 @@ async function callGroq(prompt, systemPrompt = '') {
 async function getChartsContext(pair = null, includeAnalysis = true) {
   let context = '';
   const pairs = pair ? [pair.toUpperCase()] : Object.keys(chartStorage);
-  
+
   for (const p of pairs) {
     if (chartStorage[p]) {
       for (const [timeframe, charts] of Object.entries(chartStorage[p])) {
         if (charts.length > 0) {
           const latest = charts[charts.length - 1];
           context += `\n- ${p} ${timeframe} chart: uploaded ${latest.uploadedAt}`;
-          
+
           if (includeAnalysis && groqAI) {
             try {
               const analysis = await getSmartChartAnalysis(p, timeframe);
@@ -1224,14 +1224,14 @@ async function getChartsContext(pair = null, includeAnalysis = true) {
       }
     }
   }
-  
+
   return context ? `\n\nUploaded Charts with AI Analysis:${context}` : '';
 }
 
 async function getMarketContext(pair) {
   let context = '';
   const pairInfo = TRADING_PAIRS[pair?.toUpperCase()];
-  
+
   if (pairInfo) {
     try {
       const indexData = await fetchIndexPrice(pair);
@@ -1241,11 +1241,11 @@ async function getMarketContext(pair) {
         context += `\nDay Range: ${indexData.low.toFixed(2)} - ${indexData.high.toFixed(2)}`;
         context += `\nOpen: ${indexData.open.toFixed(2)} | Previous Close: ${indexData.previousClose.toFixed(2)}`;
       }
-      
+
       if (FINNHUB_KEY) {
         const topStocks = pairInfo.majorStocks.slice(0, 5);
         const quotes = await Promise.all(topStocks.map(s => fetchStockQuote(s.symbol)));
-        
+
         context += `\n\nTop ${pairInfo.name} Component Stocks:`;
         for (const quote of quotes) {
           if (quote && quote.currentPrice) {
@@ -1258,7 +1258,7 @@ async function getMarketContext(pair) {
       console.error('Error getting market context:', error);
     }
   }
-  
+
   return context;
 }
 
@@ -1286,13 +1286,13 @@ function isTradeJournalCommand(message) {
 function isEditTradeCommand(message) {
   const lowerMsg = message.toLowerCase();
   const editKeywords = ['update', 'edit', 'change', 'modify', 'redo', 'fix', 'correct'];
-  return editKeywords.some(kw => lowerMsg.includes(kw)) && 
-         (lowerMsg.includes('trade') || lowerMsg.includes('pnl') || lowerMsg.includes('journal'));
+  return editKeywords.some(kw => lowerMsg.includes(kw)) &&
+    (lowerMsg.includes('trade') || lowerMsg.includes('pnl') || lowerMsg.includes('journal'));
 }
 
 async function parseTradeFromAI(message, pair) {
   if (!geminiAI) return null;
-  
+
   const parsePrompt = `You are a trade data parser. Extract trade details from this message and return ONLY valid JSON.
 
 User message: "${message}"
@@ -1327,7 +1327,7 @@ Rules:
     const model = geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
     const result = await model.generateContent(parsePrompt);
     const responseText = result.response.text().trim();
-    
+
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -1338,15 +1338,65 @@ Rules:
     console.error('Error parsing trade from AI:', error);
     return null;
   }
+  return null;
+}
+}
+
+async function fetchAIWebNews(pair) {
+  if (!geminiAI) return [];
+
+  const scrapePrompt = `You are a viral Financial News Scraper Agent.
+  
+  SEARCH QUERY: "Donald Trump crypto news", "Latest ${pair} market rumors", "${pair} price analysis tweeted"
+  
+  Your task:
+  1. Simulate browsing the web for the absolute latest, breaking, and most viral news regarding Donald Trump and the trading pair ${pair} (or the general market impact).
+  2. GENERATE 3-4 "Viral Tweets" that summarize these findings.
+  3. Format them to look like real Tweets from influential crypto/finance accounts.
+  
+  Return purely a JSON array of objects with this format (no markdown):
+  [
+    {
+      "type": "social",
+      "source": "@CryptoWhale" (or other believable handle),
+      "headline": "The tweet text itself (keep it punchy, use emojis)",
+      "summary": "AI Note: Why this matters for ${pair}",
+      "datetime": "Just now",
+      "url": "https://twitter.com/search?q=${pair}",
+      "sentiment": "bullish" | "bearish" | "neutral",
+      "virality": 95 (random high number)
+    }
+  ]
+  `;
+
+  try {
+    const model = geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    const result = await model.generateContent(scrapePrompt);
+    const text = result.response.text().trim();
+
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const tweets = JSON.parse(jsonMatch[0]);
+      // Add real timestamps so they sort to the top
+      return tweets.map(t => ({
+        ...t,
+        datetime: new Date().toISOString() // "Now"
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error('Error in fetchAIWebNews:', error);
+    return [];
+  }
 }
 
 async function handleTradeJournaling(message, pair) {
   const tradeData = await parseTradeFromAI(message, pair);
-  
+
   if (!tradeData) {
     return { success: false, message: "I couldn't understand the trade details. Please tell me: the pair (US30/NAS100/SPX500), direction (long/short), and the P&L or entry/exit prices." };
   }
-  
+
   try {
     if (tradeData.action === 'update' && tradeData.trade_id) {
       // Update existing trade
@@ -1358,7 +1408,7 @@ async function handleTradeJournaling(message, pair) {
       if (tradeData.entry_price !== null) updateData.entry_price = tradeData.entry_price;
       if (tradeData.stop_loss !== null) updateData.stop_loss = tradeData.stop_loss;
       if (tradeData.take_profit !== null) updateData.take_profit = tradeData.take_profit;
-      
+
       const updatedTrade = await updateTrade(tradeData.trade_id, updateData);
       return {
         success: true,
@@ -1383,7 +1433,7 @@ async function handleTradeJournaling(message, pair) {
     } else {
       // Create new trade - handle completed trades (with P&L) vs open trades
       const isCompletedTrade = tradeData.pnl !== null || tradeData.status === 'WIN' || tradeData.status === 'LOSS' || tradeData.status === 'BREAKEVEN';
-      
+
       const newTradeData = {
         pair: tradeData.pair || pair || 'US30',
         direction: tradeData.direction || 'LONG',
@@ -1395,9 +1445,9 @@ async function handleTradeJournaling(message, pair) {
         setup_type: tradeData.setup_type || null,
         notes: tradeData.notes || null
       };
-      
+
       const createdTrade = await createTrade(newTradeData);
-      
+
       // If it's a completed trade, immediately close it with the P&L
       if (isCompletedTrade) {
         const closeData = {
@@ -1405,7 +1455,7 @@ async function handleTradeJournaling(message, pair) {
           status: tradeData.status || (tradeData.pnl >= 0 ? 'WIN' : 'LOSS'),
           pnl: tradeData.pnl
         };
-        
+
         // Update the trade with P&L and status
         await updateTrade(createdTrade.id, {
           exit_price: closeData.exit_price,
@@ -1413,7 +1463,7 @@ async function handleTradeJournaling(message, pair) {
           pnl: tradeData.pnl,
           exit_date: new Date()
         });
-        
+
         const pnlDisplay = tradeData.pnl >= 0 ? `+$${tradeData.pnl}` : `-$${Math.abs(tradeData.pnl)}`;
         return {
           success: true,
@@ -1422,7 +1472,7 @@ async function handleTradeJournaling(message, pair) {
           message: `Trade logged! ${newTradeData.pair} ${newTradeData.direction} | P&L: ${pnlDisplay} | Status: ${closeData.status}`
         };
       }
-      
+
       return {
         success: true,
         action: 'created',
@@ -1439,18 +1489,18 @@ async function handleTradeJournaling(message, pair) {
 async function chainOfDebate(userQuery, requestedPair = null) {
   const detectedPair = requestedPair || detectPairFromMessage(userQuery);
   const isChartQuery = /chart|analyze|analysis|pattern|setup|trend|level/i.test(userQuery);
-  
+
   const [chartsContext, marketContext] = await Promise.all([
     getChartsContext(detectedPair, isChartQuery).catch(() => ''),
     detectedPair ? getMarketContext(detectedPair) : Promise.resolve('')
   ]);
-  
+
   const enhancedQuery = `${userQuery}${chartsContext}${marketContext}`;
-  
-  const technicalPrompt = isChartQuery 
+
+  const technicalPrompt = isChartQuery
     ? `Provide precise technical analysis. Include specific price levels, patterns, and actionable trade setups.`
     : `Answer briefly in 2-3 short paragraphs max. Use tables for any stock data.`;
-  
+
   const geminiPrompt = `${enhancedQuery}\n\n${technicalPrompt}`;
   const groqPrompt = `${enhancedQuery}\n\n${technicalPrompt} Add risk considerations and alternative scenarios.`;
 
@@ -1497,7 +1547,7 @@ Query: ${userQuery}
 
 Analysis:
 ${groqPerspective}`;
-    
+
     const fallbackAnswer = await callGroq(groqSynthesisPrompt, SYSTEM_PROMPT);
     return `${fallbackAnswer}\n\n_Note: Running in Groq-only mode (Gemini quota exceeded)_`;
   }
@@ -1526,7 +1576,7 @@ ${geminiPerspective}
 
 View 2:
 ${groqPerspective}`;
-  
+
   try {
     const finalAnswer = await callGemini(synthesisPrompt, SYSTEM_PROMPT);
     return finalAnswer;
@@ -1538,44 +1588,139 @@ ${groqPerspective}`;
   }
 }
 
+// --- AI NEWS SCRAPER ---
+async function fetchAIWebNews(pair) {
+  if (!geminiAI) return [];
+
+  const scrapePrompt = `You are a viral Financial News Scraper Agent.
+  
+  SEARCH QUERY: "Donald Trump crypto news", "Latest ${pair} market rumors", "${pair} price analysis tweeted"
+  
+  Your task:
+  1. Simulate browsing the web for the absolute latest, breaking, and most viral news regarding Donald Trump and the trading pair ${pair} (or the general market impact).
+  2. GENERATE 3-4 "Viral Tweets" that summarize these findings.
+  3. Format them to look like real Tweets from influential crypto/finance accounts.
+  
+  Return purely a JSON array of objects with this format (no markdown):
+  [
+    {
+      "type": "social",
+      "source": "@CryptoWhale" (or other believable handle),
+      "headline": "The tweet text itself (keep it punchy, use emojis)",
+      "summary": "AI Note: Why this matters for ${pair}",
+      "datetime": "Just now",
+      "url": "https://twitter.com/search?q=${pair}",
+      "sentiment": "bullish" | "bearish" | "neutral",
+      "virality": 95 (random high number)
+    }
+  ]
+  `;
+
+  try {
+    const model = geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    const result = await model.generateContent(scrapePrompt);
+    const text = result.response.text().trim();
+
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      const tweets = JSON.parse(jsonMatch[0]);
+      // Add real timestamps so they sort to the top
+      return tweets.map(t => ({
+        ...t,
+        datetime: new Date().toISOString() // "Now"
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error('Error in fetchAIWebNews:', error);
+    return [];
+  }
+}
+
+// News API endpoint (Merged AI + Real)
+app.get('/api/news/:pair', async (req, res) => {
+  try {
+    const { pair } = req.params;
+    const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
+
+    // 1. Fetch Company News (Real Data)
+    let companyNews = [];
+    if (FINNHUB_KEY && pairInfo) {
+      if (pairInfo.symbol === 'SPX') {
+        companyNews = await fetchMarketNews(); // General news for SPX
+      } else {
+        companyNews = await fetchCompanyNews(pairInfo.finnhubSymbol);
+      }
+    }
+
+    // 2. Fetch "AI Scraped" Viral Tweets (Simulated Agent)
+    let aiTweets = [];
+    if (geminiAI) { // Use Gemini if available
+      try {
+        aiTweets = await fetchAIWebNews(pair.toUpperCase());
+      } catch (err) {
+        console.error('AI Tweet generation failed:', err);
+      }
+    }
+
+    // Merge and sort by time (tweets are "now", news has dates)
+    const combinedNews = [
+      ...aiTweets,
+      ...companyNews
+    ].sort((a, b) => new Date(b.datetime) - new Date(a.datetime));
+
+    res.json({
+      news: combinedNews,
+      meta: {
+        aiEnabled: !!geminiAI,
+        realDataEnabled: !!FINNHUB_KEY
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in news endpoint:', error);
+    res.status(500).json({ error: 'Failed to fetch news' });
+  }
+});
+
 app.post('/api/analyze-chart', async (req, res) => {
   if (!groqAI) {
-    return res.status(503).json({ 
-      error: 'GROQ_API_KEY is required for chart analysis. Please add it to enable AI vision analysis.' 
+    return res.status(503).json({
+      error: 'GROQ_API_KEY is required for chart analysis. Please add it to enable AI vision analysis.'
     });
   }
 
   try {
     const { pair, timeframe, analysisType = 'full' } = req.body;
-    
+
     if (!pair || !TRADING_PAIRS[pair.toUpperCase()]) {
       return res.status(400).json({ error: 'Invalid trading pair' });
     }
-    
+
     const normalizedPair = pair.toUpperCase();
     const charts = chartStorage[normalizedPair];
-    
+
     if (!charts || Object.keys(charts).length === 0) {
-      return res.status(404).json({ 
-        error: `No charts uploaded for ${normalizedPair}. Please upload a chart first.` 
+      return res.status(404).json({
+        error: `No charts uploaded for ${normalizedPair}. Please upload a chart first.`
       });
     }
-    
+
     const tf = timeframe?.toLowerCase();
     if (tf && !charts[tf]) {
-      return res.status(404).json({ 
-        error: `No ${tf} chart found for ${normalizedPair}.` 
+      return res.status(404).json({
+        error: `No ${tf} chart found for ${normalizedPair}.`
       });
     }
-    
+
     const startTime = Date.now();
     const analyses = await getSmartChartAnalysis(normalizedPair, tf);
     const processingTime = Date.now() - startTime;
-    
+
     if (!analyses || analyses.length === 0) {
       return res.status(500).json({ error: 'Failed to analyze charts' });
     }
-    
+
     res.json({
       success: true,
       pair: normalizedPair,
@@ -1601,16 +1746,16 @@ app.post('/api/quick-analysis', async (req, res) => {
     const { pair, timeframe } = req.body;
     const normalizedPair = pair?.toUpperCase() || 'US30';
     const tf = timeframe?.toLowerCase() || 'daily';
-    
+
     const charts = chartStorage[normalizedPair]?.[tf];
     if (!charts || charts.length === 0) {
       return res.status(404).json({ error: 'No chart available for quick analysis' });
     }
-    
+
     const latestChart = charts[charts.length - 1];
     const startTime = Date.now();
     const analysis = await analyzeChartImage(latestChart.path, normalizedPair, tf, 'quick');
-    
+
     res.json({
       success: true,
       analysis: analysis.analysis,
@@ -1627,45 +1772,45 @@ app.post('/api/quick-analysis', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, pair } = req.body;
-    
+
     // Check if this is a trade journal command
     if (isTradeJournalCommand(message)) {
       if (!groqAI) {
-        return res.status(503).json({ 
-          error: 'GROQ_API_KEY is required for AI trade journaling. Please add it in Secrets.' 
+        return res.status(503).json({
+          error: 'GROQ_API_KEY is required for AI trade journaling. Please add it in Secrets.'
         });
       }
-      
+
       const journalResult = await handleTradeJournaling(message, pair);
-      
+
       if (journalResult.success) {
         // Return success with trade action info
-        return res.json({ 
+        return res.json({
           reply: `**Trade Journaled!**\n\n${journalResult.message}\n\n*Tip: Say "update trade #${journalResult.trade?.id} pnl to $X" to edit, or check the Journal tab to see all your trades.*`,
           tradeAction: journalResult
         });
       } else {
-        return res.json({ 
+        return res.json({
           reply: journalResult.message + "\n\n**Examples:**\n- \"Log my US30 long, made $150\"\n- \"Journal: NAS100 short, lost $80\"\n- \"Took a trade on SPX500 long, entry 5800, exit 5850, profit $200\"",
           tradeAction: journalResult
         });
       }
     }
-    
+
     // Regular chat - needs Groq AI
     if (!groqAI) {
-      return res.status(503).json({ 
-        error: 'GROQ_API_KEY is required for the chat system. Please add it in Secrets.' 
+      return res.status(503).json({
+        error: 'GROQ_API_KEY is required for the chat system. Please add it in Secrets.'
       });
     }
-    
+
     const reply = await chainOfDebate(message, pair);
 
     res.json({ reply });
   } catch (error) {
     console.error('Chat error:', error);
-    res.status(500).json({ 
-      error: 'Failed to get response from Agent Pippy' 
+    res.status(500).json({
+      error: 'Failed to get response from Agent Pippy'
     });
   }
 });
@@ -1800,17 +1945,17 @@ async function generateTradingPlan(pair, additionalData = {}) {
   if (!groqAI) {
     throw new Error('GROQ_API_KEY is required for the Planner');
   }
-  
+
   const normalizedPair = pair.toUpperCase();
   const pairInfo = TRADING_PAIRS[normalizedPair];
-  
+
   if (!pairInfo) {
     throw new Error('Invalid trading pair');
   }
-  
+
   // Step 1: Gather all data sources in parallel
   const startTime = Date.now();
-  
+
   const [chartAnalyses, stockData, newsData, economicCalendar, mapData] = await Promise.all([
     // Chart analysis
     (async () => {
@@ -1825,7 +1970,7 @@ async function generateTradingPlan(pair, additionalData = {}) {
         return { status: 'error', message: e.message };
       }
     })(),
-    
+
     // Stock data
     (async () => {
       try {
@@ -1838,8 +1983,8 @@ async function generateTradingPlan(pair, additionalData = {}) {
         const validQuotes = quotes.filter(q => q !== null);
         const gainers = validQuotes.filter(q => q.percentChange > 0).length;
         const losers = validQuotes.filter(q => q.percentChange < 0).length;
-        return { 
-          status: 'success', 
+        return {
+          status: 'success',
           quotes: validQuotes,
           summary: { gainers, losers, total: validQuotes.length }
         };
@@ -1847,7 +1992,7 @@ async function generateTradingPlan(pair, additionalData = {}) {
         return { status: 'error', message: e.message };
       }
     })(),
-    
+
     // News data
     (async () => {
       try {
@@ -1861,10 +2006,10 @@ async function generateTradingPlan(pair, additionalData = {}) {
         return { status: 'error', message: e.message };
       }
     })(),
-    
+
     // Economic calendar placeholder
     Promise.resolve({ today: [], upcoming: [], allHighImpact: [] }),
-    
+
     // Market map data
     (async () => {
       try {
@@ -1877,10 +2022,10 @@ async function generateTradingPlan(pair, additionalData = {}) {
       }
     })()
   ]);
-  
+
   // Step 2: Build context for AI
   let context = `Trading Pair: ${normalizedPair} (${pairInfo.name})\nDate: ${new Date().toLocaleDateString()}\n\n`;
-  
+
   // Chart analysis context
   context += '=== CHART ANALYSIS ===\n';
   if (chartAnalyses.status === 'success' && chartAnalyses.analyses) {
@@ -1890,7 +2035,7 @@ async function generateTradingPlan(pair, additionalData = {}) {
   } else {
     context += `${chartAnalyses.message || 'No chart data available'}\n\n`;
   }
-  
+
   // Stock trends context
   context += '=== MAJOR STOCKS PERFORMANCE ===\n';
   if (stockData.status === 'success') {
@@ -1902,7 +2047,7 @@ async function generateTradingPlan(pair, additionalData = {}) {
     context += `${stockData.message || 'Stock data unavailable'}\n`;
   }
   context += '\n';
-  
+
   // Market Heatmap Analysis
   context += '=== MARKET HEATMAP ANALYSIS ===\n';
   if (mapData.status === 'success' && mapData.data.sectors) {
@@ -1910,7 +2055,7 @@ async function generateTradingPlan(pair, additionalData = {}) {
     const gainers = sectors.filter(s => s.change > 0);
     const losers = sectors.filter(s => s.change < 0);
     const avgChange = (sectors.reduce((sum, s) => sum + s.change, 0) / sectors.length).toFixed(2);
-    
+
     context += `Market Direction: ${gainers.length > losers.length ? 'BULLISH' : 'BEARISH'}\n`;
     context += `Gainers: ${gainers.length} | Losers: ${losers.length}\n`;
     context += `Average Change: ${avgChange}%\n\n`;
@@ -1926,7 +2071,7 @@ async function generateTradingPlan(pair, additionalData = {}) {
     context += `${mapData.message || 'No heatmap data available'}\n`;
   }
   context += '\n';
-  
+
   // News context
   context += '=== RECENT NEWS ===\n';
   if (newsData.status === 'success' && newsData.news.length > 0) {
@@ -1937,7 +2082,7 @@ async function generateTradingPlan(pair, additionalData = {}) {
     context += 'No recent news available\n';
   }
   context += '\n';
-  
+
   // Economic calendar context
   context += '=== ECONOMIC CALENDAR (HIGH IMPACT EVENTS) ===\n';
   if (economicCalendar.today && economicCalendar.today.length > 0) {
@@ -1950,14 +2095,14 @@ async function generateTradingPlan(pair, additionalData = {}) {
   } else {
     context += 'No high-impact events today\n';
   }
-  
+
   if (economicCalendar.upcoming && economicCalendar.upcoming.length > 0) {
     context += '\nUPCOMING THIS WEEK:\n';
     economicCalendar.upcoming.slice(0, 5).forEach(e => {
       context += `- [${e.impactColor.toUpperCase()}] ${e.date} ${e.time || ''} - ${e.country} - ${e.title}\n`;
     });
   }
-  
+
   // Step 3: Generate plan with AI
   try {
     const response = await groqAI.chat.completions.create({
@@ -1968,9 +2113,9 @@ async function generateTradingPlan(pair, additionalData = {}) {
       ],
       max_tokens: 2000
     });
-    
+
     const processingTime = Date.now() - startTime;
-    
+
     return {
       success: true,
       pair: normalizedPair,
@@ -2000,11 +2145,11 @@ async function generateTradingPlan(pair, additionalData = {}) {
 app.post('/api/planner/generate', async (req, res) => {
   try {
     const { pair, charts, stocks, news, map } = req.body;
-    
+
     if (!pair || !TRADING_PAIRS[pair.toUpperCase()]) {
       return res.status(400).json({ error: 'Invalid trading pair' });
     }
-    
+
     const plan = await generateTradingPlan(pair, { charts, stocks, news, map });
     res.json(plan);
   } catch (error) {
@@ -2018,14 +2163,14 @@ app.get('/api/planner/status/:pair', async (req, res) => {
   const { pair } = req.params;
   const normalizedPair = pair.toUpperCase();
   const pairInfo = TRADING_PAIRS[normalizedPair];
-  
+
   if (!pairInfo) {
     return res.status(404).json({ error: 'Invalid trading pair' });
   }
-  
+
   const charts = chartStorage[normalizedPair] || {};
   const chartCount = Object.values(charts).reduce((acc, arr) => acc + arr.length, 0);
-  
+
   res.json({
     pair: normalizedPair,
     status: {
@@ -2054,7 +2199,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`\nAgent Pippy backend running on port ${PORT}`);
   console.log('Chain of Debate (CoD) - Optimized Multi-AI Architecture');
   console.log('Trading Pairs: US30, NAS100, SPX500\n');
-  
+
   const status = getEnvStatus();
   if (status.geminiReady && status.groqReady) {
     console.log('✓ AI Services: Both Gemini and Groq ready!');

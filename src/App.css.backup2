@@ -1,6 +1,6 @@
 /* ========================================
-   PROFESSIONAL UI - DARK CHARCOAL + ORANGE
-   High Contrast, Zero Eye Fatigue
+   LUXURY DARK THEME - APP STYLES
+   Neon Purple Accent with Smooth Animations
    ======================================== */
 
 * {
@@ -225,9 +225,9 @@
 
 .header {
   padding: 16px 20px;
-  background: var(--secondary-bg);
-  border-bottom: 1px solid var(--border-color);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(180deg, var(--carbon-violet) 0%, var(--midnight-purple) 100%);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 4px 20px rgba(139, 92, 246, 0.15);
   backdrop-filter: blur(10px);
   animation: slideDown 0.5s ease;
 }
@@ -297,12 +297,13 @@
 .logo-section h1 {
   font-size: 2rem;
   margin: 0;
-  background: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-hover));
+  background: linear-gradient(135deg, var(--royal-neon-purple), var(--electric-violet), var(--neon-magenta), var(--royal-neon-purple));
   background-size: 300% 300%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: gradientShift 8s ease infinite;
+  text-shadow: 0 0 30px rgba(139, 92, 246, 0.3);
+  animation: gradientShift 8s ease infinite, aiBreathing 4s ease-in-out infinite;
 }
 
 @keyframes glow {
@@ -316,9 +317,10 @@
 }
 
 .logo-section .subtitle {
-  color: var(--text-secondary);
+  color: var(--soft-lavender);
   font-size: 0.9rem;
   margin: 4px 0 0;
+  opacity: 0.9;
 }
 
 /* ========================================
@@ -332,11 +334,11 @@
 
 .pair-btn {
   padding: 10px 20px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--glass-border);
   border-radius: 10px;
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
-  color: var(--text-secondary);
+  color: var(--soft-lavender);
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -364,16 +366,16 @@
 }
 
 .pair-btn:hover {
-  border-color: var(--accent-orange);
-  color: var(--accent-orange);
+  border-color: var(--royal-neon-purple);
+  color: var(--electric-violet);
   transform: translateY(-2px);
 }
 
 .pair-btn.active {
-  background: var(--accent-orange);
-  color: var(--text-primary);
+  background: var(--royal-neon-purple);
+  color: var(--pure-white);
   border-color: transparent;
-  box-shadow: 0 0 15px var(--accent-orange-glow);
+  box-shadow: var(--primary-glow);
 }
 
 /* ========================================
@@ -391,7 +393,7 @@
   padding: 14px 24px;
   border: none;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--muted-lilac);
   font-size: 0.95rem;
   font-weight: 500;
   cursor: pointer;
@@ -400,11 +402,11 @@
 }
 
 .tab-btn:hover {
-  color: var(--accent-orange-hover);
+  color: var(--electric-violet);
 }
 
 .tab-btn.active {
-  color: var(--accent-orange);
+  color: var(--royal-neon-purple);
 }
 
 .tab-btn.active::after {
@@ -414,9 +416,9 @@
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--accent-orange), var(--accent-orange-hover));
+  background: linear-gradient(90deg, var(--royal-neon-purple), var(--electric-violet));
   border-radius: 3px 3px 0 0;
-  box-shadow: 0 0 10px var(--accent-orange-glow);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.5);
   animation: slideIn 0.3s ease;
 }
 
@@ -456,7 +458,7 @@
   display: flex;
   gap: 10px;
   padding: 12px 20px;
-  background: var(--secondary-bg);
+  background: rgba(20, 13, 31, 0.8);
   overflow-x: auto;
   flex-shrink: 0;
   backdrop-filter: blur(10px);
@@ -464,10 +466,10 @@
 
 .quick-cmd-btn {
   padding: 8px 16px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--glass-border);
   border-radius: 20px;
   background: var(--glass-bg);
-  color: var(--accent-orange);
+  color: var(--royal-neon-purple);
   font-size: 0.85rem;
   white-space: nowrap;
   cursor: pointer;
@@ -475,9 +477,9 @@
 }
 
 .quick-cmd-btn:hover {
-  background: rgba(255, 106, 0, 0.15);
-  border-color: var(--accent-orange);
-  box-shadow: 0 0 15px var(--accent-orange-glow);
+  background: rgba(139, 92, 246, 0.15);
+  border-color: var(--royal-neon-purple);
+  box-shadow: var(--primary-glow);
   transform: translateY(-1px);
 }
 
@@ -598,46 +600,46 @@
   display: flex;
   gap: 12px;
   padding: 16px 20px;
-  background: var(--secondary-bg);
-  border-top: 1px solid var(--border-color);
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  background: var(--carbon-violet);
+  border-top: 1px solid var(--glass-border);
+  box-shadow: 0 -4px 20px rgba(139, 92, 246, 0.1);
 }
 
 .input-container input {
   flex: 1;
   padding: 14px 20px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--glass-border);
   border-radius: 12px;
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
-  color: var(--text-primary);
+  color: var(--pure-white);
   font-size: 1rem;
   outline: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .input-container input:focus {
-  border-color: var(--accent-orange);
-  box-shadow: 0 0 15px var(--accent-orange-glow);
-  background: var(--elevated-bg);
+  border-color: var(--royal-neon-purple);
+  box-shadow: var(--primary-glow);
+  background: rgba(27, 19, 40, 0.8);
 }
 
 .input-container input::placeholder {
-  color: var(--text-muted);
+  color: var(--muted-lilac);
 }
 
 .input-container button {
   padding: 14px 28px;
-  background: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-hover));
+  background: linear-gradient(135deg, var(--royal-neon-purple), var(--electric-violet), var(--royal-neon-purple));
   background-size: 200% 200%;
   border: none;
   border-radius: 12px;
-  color: var(--text-primary);
+  color: var(--pure-white);
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 0 15px var(--accent-orange-glow);
+  box-shadow: var(--primary-glow);
   position: relative;
   overflow: hidden;
   animation: gradientShift 3s ease infinite;
@@ -660,7 +662,7 @@
 
 .input-container button:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 0 25px var(--accent-orange-glow), 0 0 50px rgba(255, 106, 0, 0.2);
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.6), 0 0 40px rgba(168, 85, 247, 0.3);
 }
 
 .input-container button:active:not(:disabled) {
@@ -1114,7 +1116,7 @@
   background: var(--glass-bg);
   padding: 18px;
   border-radius: 16px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--glass-border);
   text-decoration: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   backdrop-filter: blur(10px);
@@ -1122,8 +1124,8 @@
 }
 
 .news-card:hover {
-  border-color: var(--accent-orange);
-  box-shadow: 0 0 15px var(--accent-orange-glow);
+  border-color: var(--royal-neon-purple);
+  box-shadow: var(--primary-glow);
   transform: translateY(-3px);
 }
 
@@ -1135,8 +1137,8 @@
 }
 
 .news-symbol {
-  background: linear-gradient(135deg, var(--accent-orange), var(--accent-orange-hover));
-  color: var(--text-primary);
+  background: linear-gradient(135deg, var(--royal-neon-purple), var(--electric-violet));
+  color: var(--pure-white);
   padding: 3px 10px;
   border-radius: 6px;
   font-size: 0.75rem;
@@ -1144,25 +1146,27 @@
 }
 
 .news-source {
-  color: var(--text-secondary);
+  color: var(--soft-lavender);
   font-size: 0.8rem;
 }
 
 .news-date {
-  color: var(--text-muted);
+  color: var(--muted-lilac);
   font-size: 0.8rem;
+  opacity: 0.6;
 }
 
 .news-headline {
-  color: var(--text-primary);
+  color: var(--pure-white);
   font-size: 1.05rem;
   margin: 0 0 8px;
   line-height: 1.4;
 }
 
 .news-summary {
-  color: var(--text-secondary);
+  color: var(--soft-lavender);
   font-size: 0.9rem;
+  opacity: 0.8;
   line-height: 1.5;
   margin: 0;
 }
@@ -2094,122 +2098,3 @@
     grid-template-columns: 1fr;
   }
 }
-
-/* Auth Loading State */
-.app-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  background-color: var(--secondary-bg);
-  color: var(--text-secondary);
-  gap: 20px;
-}
-
-.sign-out-btn {
-  padding: 8px 16px;
-  background: transparent;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  color: var(--text-muted);
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.sign-out-btn:hover {
-  background: rgba(255, 106, 0, 0.1);
-  border-color: var(--accent-orange);
-  color: var(--accent-orange);
-}
-/* ========================================
-   SOCIAL / AI NEWS FEED STYLES
-   ======================================== */
-.news-card.social {
-  background: rgba(22, 24, 28, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  border-left: 4px solid #1d9bf0;
-}
-
-.news-card.social:hover {
-  background: rgba(255, 255, 255, 0.03);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-
-.tweet-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.tweet-avatar {
-  width: 40px;
-  height: 40px;
-  background: linear-gradient(135deg, #1d9bf0, #8b5cf6);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  color: white;
-  font-weight: bold;
-}
-
-.tweet-meta {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-
-.tweet-source {
-  font-weight: 700;
-  color: #e7e9ea;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.verified-badge {
-  color: #1d9bf0;
-  font-size: 0.9rem;
-}
-
-.tweet-handle {
-  font-size: 0.9rem;
-  color: #71767b;
-}
-
-.tweet-content {
-  color: #e7e9ea;
-  font-size: 1rem;
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-.tweet-ai-note {
-  font-size: 0.85rem;
-  color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.1);
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.virality-badge {
-  font-size: 0.75rem;
-  color: #00ba7c;
-  font-weight: 600;
-  margin-left: auto;
-}
-

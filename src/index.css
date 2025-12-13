@@ -1,14 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ========================================
+   PROFESSIONAL UI - DARK CHARCOAL + ORANGE
+   ======================================== */
+
 :root {
-  --neon-purple-deep: #1A0038;
-  --neon-purple-mid: #2D0052;
-  --electric-violet: #4B00C8;
-  --electric-violet-light: #9D4CFF;
-  --neon-green: #C6FF00;
-  --neon-green-soft: #D4FF5A;
-  --glass-purple: rgba(75, 0, 200, 0.15);
-  --glass-border: rgba(157, 76, 255, 0.3);
-  --text-white: #FFFFFF;
-  --text-muted: rgba(255, 255, 255, 0.7);
+  /* Backgrounds */
+  --primary-bg: #3E3E3E;
+  --secondary-bg: #4A4A4A;
+  --elevated-bg: #565656;
+  --border-color: #2F2F2F;
+
+  /* Typography */
+  --text-primary: #FFFFFF;
+  --text-secondary: #D6D6D6;
+  --text-muted: #9E9E9E;
+  --text-disabled: #777777;
+
+  /* Accent Orange */
+  --accent-orange: #FF6A00;
+  --accent-orange-hover: #FF8533;
+  --accent-orange-glow: rgba(255, 106, 0, 0.25);
+
+  /* Status Colors */
+  --success: #2ECC71;
+  --warning: #F1C40F;
+  --error: #E74C3C;
+  --info: #3498DB;
+
+  /* Map Colors (Keep Neon) */
+  --neon-green: #39FF14;
+  --neon-red: #FF073A;
+
+  /* Glass Effect */
+  --glass-bg: rgba(74, 74, 74, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 * {
@@ -18,31 +44,51 @@
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: linear-gradient(135deg, var(--neon-purple-deep) 0%, #0D001A 100%);
-  min-height: 100vh;
-  color: var(--text-white);
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--primary-bg);
+  color: var(--text-primary);
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  background: var(--primary-bg);
 }
 
+/* Selection */
+::selection {
+  background: var(--accent-orange);
+  color: var(--text-primary);
+}
+
+/* Scrollbar Styling */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 12px;
+  height: 12px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--neon-purple-deep);
+  background: var(--primary-bg);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--electric-violet);
-  border-radius: 4px;
+  background: var(--secondary-bg);
+  border-radius: 10px;
+  border: 2px solid var(--primary-bg);
+  transition: all 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--electric-violet-light);
+  background: var(--accent-orange);
+  box-shadow: 0 0 10px var(--accent-orange-glow);
+}
+
+/* Firefox Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--secondary-bg) var(--primary-bg);
 }
