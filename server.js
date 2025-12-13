@@ -1082,14 +1082,19 @@ app.get('/api/trading-pairs', (req, res) => {
 });
 
 async function callGemini(prompt, systemPrompt = '') {
-  const response = await geminiAI.models.generateContent({
-    model: 'gemini-2.5-flash',
-    config: {
-      systemInstruction: systemPrompt || SYSTEM_PROMPT
-    },
-    contents: prompt
-  });
-  return response.text || '';
+  try {
+    const response = await geminiAI.models.generateContent({
+      model: 'gemini-1.5-flash',
+      config: {
+        systemInstruction: systemPrompt || SYSTEM_PROMPT
+      },
+      contents: prompt
+    });
+    return response.text() || '';
+  } catch (error) {
+    console.error('Gemini API Error:', error);
+    return '';
+  }
 }
 
 async function analyzeChartImage(imagePath, pair, timeframe, analysisType = 'full') {
@@ -1324,9 +1329,11 @@ Rules:
 - Return ONLY the JSON object, nothing else`;
 
   try {
-    const model = geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
-    const result = await model.generateContent(parsePrompt);
-    const responseText = result.response.text().trim();
+    const response = await geminiAI.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: parsePrompt
+    });
+    const responseText = response.text().trim();
 
     // Extract JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -1340,8 +1347,8 @@ Rules:
   }
   return null;
 }
-}
 
+/* DUPLICATE REMOVED
 async function fetchAIWebNews(pair) {
   if (!geminiAI) return [];
 
@@ -1388,7 +1395,7 @@ async function fetchAIWebNews(pair) {
     console.error('Error in fetchAIWebNews:', error);
     return [];
   }
-}
+} */
 
 async function handleTradeJournaling(message, pair) {
   const tradeData = await parseTradeFromAI(message, pair);
@@ -1617,9 +1624,11 @@ async function fetchAIWebNews(pair) {
   `;
 
   try {
-    const model = geminiAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
-    const result = await model.generateContent(scrapePrompt);
-    const text = result.response.text().trim();
+    const response = await geminiAI.models.generateContent({
+      model: 'gemini-1.5-flash',
+      contents: scrapePrompt
+    });
+    const text = response.text().trim();
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {

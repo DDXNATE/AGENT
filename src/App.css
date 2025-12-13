@@ -2213,3 +2213,26 @@
   margin-left: auto;
 }
 
+
+/* ========================================
+   NEON ORANGE OVERRIDES
+   ======================================== */
+.message.user {
+  background: linear-gradient(135deg, #FF4500, #FF8C00) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(255, 69, 0, 0.4) !important;
+}
+.message.user .msg-label {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.message.assistant {
+  background: var(--secondary-bg) !important;
+  color: #ffffff !important;
+}
+.message.assistant .msg-label {
+  color: var(--accent-orange) !important;
+}
+.message.assistant::after {
+  background: linear-gradient(90deg, transparent, var(--accent-orange), transparent) !important;
+}
+
