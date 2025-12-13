@@ -145,34 +145,33 @@ const TRADING_PAIRS = {
       { symbol: 'SNPS', name: 'Synopsys' },
       { symbol: 'CDNS', name: 'Cadence' },
       { symbol: 'ASML', name: 'ASML' },
-      { symbol: 'LRCX', name: 'Larcx' },
+      { symbol: 'LRCX', name: 'Lam Research' },
       { symbol: 'KLAC', name: 'KLA' },
       { symbol: 'MRVL', name: 'Marvell' },
       { symbol: 'NXPI', name: 'NXP' },
       { symbol: 'AMAT', name: 'Applied Mat' },
       { symbol: 'MU', name: 'Micron' },
       { symbol: 'CRWD', name: 'CrowdStrike' },
-      { symbol: 'OKTA', name: 'Okta' },
       { symbol: 'WDAY', name: 'Workday' },
-      { symbol: 'SNOW', name: 'Snowflake' },
       { symbol: 'NOW', name: 'ServiceNow' },
-      { symbol: 'SHOP', name: 'Shopify' },
-      { symbol: 'ROKU', name: 'Roku' },
       { symbol: 'DDOG', name: 'Datadog' },
-      { symbol: 'TWLO', name: 'Twilio' },
-      { symbol: 'SPLK', name: 'Splunk' },
-      { symbol: 'ZOOM', name: 'Zoom' },
       { symbol: 'ZS', name: 'Zscaler' },
       { symbol: 'NET', name: 'Cloudflare' },
-      { symbol: 'PSTG', name: 'Postgres' },
-      { symbol: 'DOCU', name: 'DocuSign' },
       { symbol: 'ABNB', name: 'Airbnb' },
-      { symbol: 'AI', name: 'C3 Metrics' },
       { symbol: 'LULU', name: 'Lululemon' },
-      { symbol: 'CHWY', name: 'Chewy' },
-      { symbol: 'PENN', name: 'Penn Entert' },
       { symbol: 'DASH', name: 'DoorDash' },
-      { symbol: 'UBER', name: 'Uber' }
+      { symbol: 'UBER', name: 'Uber' },
+      { symbol: 'PDD', name: 'PDD Holdings' },
+      { symbol: 'MELI', name: 'MercadoLibre' },
+      { symbol: 'ORLY', name: 'OReilly Auto' },
+      { symbol: 'ADP', name: 'ADP' },
+      { symbol: 'PANW', name: 'Palo Alto' },
+      { symbol: 'REGN', name: 'Regeneron' },
+      { symbol: 'VRTX', name: 'Vertex' },
+      { symbol: 'ISRG', name: 'Intuitive Surg' },
+      { symbol: 'BKNG', name: 'Booking' },
+      { symbol: 'AZN', name: 'AstraZeneca' },
+      { symbol: 'MDLZ', name: 'Mondelez' }
     ],
     majorStocks: [
       { symbol: 'AAPL', name: 'Apple Inc.' },
@@ -208,7 +207,7 @@ const TRADING_PAIRS = {
       { symbol: 'JNJ', name: 'Johnson & J' },
       { symbol: 'WFC', name: 'Wells Fargo' },
       { symbol: 'PG', name: 'Procter' },
-      { symbol: 'COSTCO', name: 'Costco' },
+      { symbol: 'COST', name: 'Costco' },
       { symbol: 'MCD', name: "McDonald's" },
       { symbol: 'CVX', name: 'Chevron' },
       { symbol: 'ASML', name: 'ASML' },
@@ -944,6 +943,95 @@ app.get('/api/market-map/:pair', async (req, res) => {
   } catch (error) {
     console.error('Error fetching market map:', error);
     res.status(500).json({ error: 'Failed to fetch market map data' });
+  }
+});
+
+// Agent Pippy Market Screener - Real-time stock data for heatmap
+app.get('/api/screener/:pair', async (req, res) => {
+  const { pair } = req.params;
+  const pairInfo = TRADING_PAIRS[pair.toUpperCase()];
+  
+  if (!pairInfo) {
+    return res.status(404).json({ error: 'Trading pair not found' });
+  }
+  
+  try {
+    const allStocks = pairInfo.allStocks || pairInfo.majorStocks || [];
+    console.log(`[Screener] Fetching data for ${pair} - ${allStocks.length} stocks`);
+    
+    // Fetch real quotes using Yahoo Finance (more reliable for bulk)
+    const stocksData = await Promise.all(
+      allStocks.map(async (stock) => {
+        try {
+          // Try Yahoo Finance first
+          const quote = await yahooFinance.quote(stock.symbol);
+          if (quote && quote.regularMarketPrice) {
+            const change = quote.regularMarketChange || 0;
+            const changePercent = quote.regularMarketChangePercent || 0;
+            return {
+              symbol: stock.symbol,
+              price: parseFloat(quote.regularMarketPrice.toFixed(2)),
+              change: parseFloat(change.toFixed(2)),
+              changePercent: parseFloat(changePercent.toFixed(2)),
+              volume: quote.regularMarketVolume || 0,
+              marketCap: quote.marketCap || 0,
+              dataSource: 'yahoo',
+              valid: true
+            };
+          }
+        } catch (yahooErr) {
+          // Fallback to Finnhub
+          try {
+            const finnhubQuote = await fetchStockQuote(stock.symbol);
+            if (finnhubQuote && finnhubQuote.currentPrice > 0) {
+              return {
+                symbol: stock.symbol,
+                price: finnhubQuote.currentPrice,
+                change: finnhubQuote.change || 0,
+                changePercent: finnhubQuote.percentChange || 0,
+                volume: 0,
+                marketCap: 0,
+                dataSource: 'finnhub',
+                valid: true
+              };
+            }
+          } catch (finnErr) {
+            console.warn(`[Screener] Failed for ${stock.symbol}:`, finnErr.message);
+          }
+        }
+        return { symbol: stock.symbol, valid: false };
+      })
+    );
+    
+    // Filter valid stocks and sort by absolute change (biggest movers)
+    const validStocks = stocksData
+      .filter(s => s.valid && s.price > 0)
+      .sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
+    
+    const gainers = validStocks.filter(s => s.changePercent > 0).length;
+    const losers = validStocks.filter(s => s.changePercent < 0).length;
+    const avgChange = validStocks.length > 0 
+      ? (validStocks.reduce((sum, s) => sum + s.changePercent, 0) / validStocks.length).toFixed(2)
+      : 0;
+    
+    console.log(`[Screener] ${pair}: ${validStocks.length} valid stocks, ${gainers} gainers, ${losers} losers`);
+    
+    res.json({
+      pair: pair.toUpperCase(),
+      pairName: pairInfo.name,
+      stocks: validStocks,
+      meta: {
+        total: validStocks.length,
+        gainers,
+        losers,
+        avgChange: parseFloat(avgChange),
+        marketStatus: getMarketStatus(),
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('[Screener] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch screener data', message: error.message });
   }
 });
 

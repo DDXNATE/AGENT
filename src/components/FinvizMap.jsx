@@ -8,123 +8,42 @@ function FinvizMap({ selectedPair }) {
   const [refreshTime, setRefreshTime] = useState(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Real stock lists for each pair
-  const STOCKS_BY_PAIR = {
-    US30: [
-      { symbol: 'AAPL', name: 'Apple' },
-      { symbol: 'MSFT', name: 'Microsoft' },
-      { symbol: 'UNH', name: 'UnitedHealth' },
-      { symbol: 'GS', name: 'Goldman Sachs' },
-      { symbol: 'HD', name: 'Home Depot' },
-      { symbol: 'MCD', name: "McDonald's" },
-      { symbol: 'CAT', name: 'Caterpillar' },
-      { symbol: 'AMGN', name: 'Amgen' },
-      { symbol: 'V', name: 'Visa' },
-      { symbol: 'BA', name: 'Boeing' },
-      { symbol: 'JPM', name: 'JPMorgan' },
-      { symbol: 'JNJ', name: 'Johnson & J' },
-      { symbol: 'WMT', name: 'Walmart' },
-      { symbol: 'PG', name: 'Procter' },
-      { symbol: 'CRM', name: 'Salesforce' }
-    ],
-    NAS100: [
-      { symbol: 'AAPL', name: 'Apple' },
-      { symbol: 'MSFT', name: 'Microsoft' },
-      { symbol: 'NVDA', name: 'NVIDIA' },
-      { symbol: 'AMZN', name: 'Amazon' },
-      { symbol: 'META', name: 'Meta' },
-      { symbol: 'GOOGL', name: 'Alphabet' },
-      { symbol: 'TSLA', name: 'Tesla' },
-      { symbol: 'AVGO', name: 'Broadcom' },
-      { symbol: 'COST', name: 'Costco' },
-      { symbol: 'NFLX', name: 'Netflix' },
-      { symbol: 'QCOM', name: 'Qualcomm' },
-      { symbol: 'AMD', name: 'AMD' },
-      { symbol: 'INTC', name: 'Intel' },
-      { symbol: 'CRM', name: 'Salesforce' },
-      { symbol: 'ADBE', name: 'Adobe' }
-    ],
-    SPX500: [
-      { symbol: 'AAPL', name: 'Apple' },
-      { symbol: 'MSFT', name: 'Microsoft' },
-      { symbol: 'NVDA', name: 'NVIDIA' },
-      { symbol: 'AMZN', name: 'Amazon' },
-      { symbol: 'META', name: 'Meta' },
-      { symbol: 'GOOGL', name: 'Alphabet' },
-      { symbol: 'BRK.B', name: 'Berkshire' },
-      { symbol: 'JPM', name: 'JPMorgan' },
-      { symbol: 'LLY', name: 'Eli Lilly' },
-      { symbol: 'XOM', name: 'ExxonMobil' },
-      { symbol: 'V', name: 'Visa' },
-      { symbol: 'WMT', name: 'Walmart' },
-      { symbol: 'JNJ', name: 'Johnson & J' },
-      { symbol: 'WFC', name: 'Wells Fargo' },
-      { symbol: 'PG', name: 'Procter' }
-    ]
-  };
-
   useEffect(() => {
-    fetchMapData();
+    fetchScreenerData();
     let interval;
     if (autoRefresh) {
-      interval = setInterval(fetchMapData, 60000);
+      interval = setInterval(fetchScreenerData, 60000);
     }
     return () => {
       if (interval) clearInterval(interval);
     };
   }, [selectedPair, autoRefresh]);
 
-  const fetchMapData = async () => {
+  const fetchScreenerData = async () => {
     setLoading(true);
     setError('');
     try {
-      const stocks = STOCKS_BY_PAIR[selectedPair] || STOCKS_BY_PAIR.US30;
+      const response = await fetch(`/api/screener/${selectedPair}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch data: ${response.status}`);
+      }
+      const data = await response.json();
       
-      // Fetch live data for each stock
-      const promises = stocks.map(async (stock) => {
-        try {
-          const response = await fetch(`/api/stocks-quote/${stock.symbol}`);
-          if (response.ok) {
-            const data = await response.json();
-            return {
-              symbol: stock.symbol,
-              name: stock.name,
-              price: parseFloat(data.currentPrice) || parseFloat(data.c) || 0,
-              change: parseFloat(data.change) || parseFloat(data.d) || 0,
-              changePercent: parseFloat(data.percentChange) || parseFloat(data.dp) || 0
-            };
-          }
-          return null;
-        } catch (err) {
-          return null;
-        }
-      });
-
-      const results = await Promise.all(promises);
-      const validResults = results.filter(s => s && s.price > 0 && !isNaN(s.price));
-      
-      if (validResults.length === 0) {
-        setError('No market data available - API unreachable');
+      if (!data.stocks || data.stocks.length === 0) {
+        setError('No market data available');
         setLoading(false);
         return;
       }
       
-      validResults.sort((a, b) => b.changePercent - a.changePercent);
-      
       setMapData({
-        pair: selectedPair,
-        stocks: validResults,
-        meta: {
-          gainers: validResults.filter(s => s.changePercent > 0).length,
-          losers: validResults.filter(s => s.changePercent < 0).length,
-          avgChange: (validResults.reduce((sum, s) => sum + s.changePercent, 0) / validResults.length).toFixed(2),
-          total: validResults.length
-        }
+        pair: data.pair,
+        stocks: data.stocks,
+        meta: data.meta
       });
       setRefreshTime(new Date());
     } catch (err) {
-      console.error('Error:', err);
-      setError('Failed to load market data');
+      console.error('Screener Error:', err);
+      setError(err.message || 'Failed to load market data');
     } finally {
       setLoading(false);
     }
@@ -145,8 +64,8 @@ function FinvizMap({ selectedPair }) {
     return (
       <div className="finviz-map-container">
         <div className="map-error">
-          <p>⚠️ {error}</p>
-          <button onClick={fetchMapData} className="retry-btn">Retry</button>
+          <p>{error}</p>
+          <button onClick={fetchScreenerData} className="retry-btn">Retry</button>
         </div>
       </div>
     );
@@ -194,8 +113,8 @@ function FinvizMap({ selectedPair }) {
           />
           Auto-refresh every 60s
         </label>
-        <button onClick={fetchMapData} className="refresh-button" disabled={loading}>
-          {loading ? 'Updating...' : '⟳ Refresh Now'}
+        <button onClick={fetchScreenerData} className="refresh-button" disabled={loading}>
+          {loading ? 'Updating...' : 'Refresh Now'}
         </button>
       </div>
 
@@ -205,7 +124,7 @@ function FinvizMap({ selectedPair }) {
             {mapData.stocks.map((stock, idx) => {
               const isPositive = stock.changePercent >= 0;
               const absChange = Math.abs(stock.changePercent);
-              const intensity = Math.min(absChange / 15, 1);
+              const intensity = Math.min(absChange / 8, 1);
 
               return (
                 <div
@@ -217,15 +136,13 @@ function FinvizMap({ selectedPair }) {
                       : `rgba(244, 67, 54, ${0.2 + intensity * 0.8})`,
                     borderColor: isPositive ? '#4CAF50' : '#F44336'
                   }}
-                  onMouseEnter={() => {}}
-                  onMouseLeave={() => {}}
                   title={`$${stock.price.toFixed(2)} (${isPositive ? '+' : ''}${stock.changePercent.toFixed(2)}%)`}
                 >
                   <div className="item-content">
                     <div className="stock-symbol">{stock.symbol}</div>
                     {stock.price > 0 && <div className="stock-price">${stock.price.toFixed(2)}</div>}
                     <div className="stock-change" style={{ color: isPositive ? '#4CAF50' : '#F44336' }}>
-                      {isPositive ? '▲' : '▼'} {Math.abs(stock.changePercent).toFixed(2)}%
+                      {isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%
                     </div>
                   </div>
                 </div>
@@ -240,11 +157,11 @@ function FinvizMap({ selectedPair }) {
       </div>
 
       <div className="map-legend">
-        <div className="legend-color strong-gain">Strong Gainers ({'>'}10%)</div>
-        <div className="legend-color moderate-gain">Moderate Gainers (5-10%)</div>
+        <div className="legend-color strong-gain">Strong Gainers ({'>'}5%)</div>
+        <div className="legend-color moderate-gain">Moderate Gainers (2-5%)</div>
         <div className="legend-color neutral">Neutral</div>
-        <div className="legend-color moderate-loss">Moderate Losers (5-10%)</div>
-        <div className="legend-color strong-loss">Strong Losers ({'>'}10%)</div>
+        <div className="legend-color moderate-loss">Moderate Losers (2-5%)</div>
+        <div className="legend-color strong-loss">Strong Losers ({'>'}5%)</div>
       </div>
 
       <div className="map-info">
