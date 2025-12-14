@@ -1084,13 +1084,13 @@ app.get('/api/trading-pairs', (req, res) => {
 async function callGemini(prompt, systemPrompt = '') {
   try {
     const response = await geminiAI.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       config: {
         systemInstruction: systemPrompt || SYSTEM_PROMPT
       },
       contents: prompt
     });
-    return response.text() || '';
+    return response.text || '';
   } catch (error) {
     console.error('Gemini API Error:', error);
     return '';
@@ -1520,14 +1520,14 @@ async function chainOfDebate(userQuery, requestedPair = null) {
     callGroq(groqPrompt, SYSTEM_PROMPT)
   ]);
 
-  if (results[0].status === 'fulfilled') {
+  if (results[0].status === 'fulfilled' && results[0].value) {
     geminiPerspective = results[0].value;
   } else {
     geminiAvailable = false;
     console.log('Gemini unavailable, using Groq-only mode');
   }
 
-  if (results[1].status === 'fulfilled') {
+  if (results[1].status === 'fulfilled' && results[1].value) {
     groqPerspective = results[1].value;
   }
 
@@ -1535,7 +1535,7 @@ async function chainOfDebate(userQuery, requestedPair = null) {
     throw new Error('Both AI services are unavailable. Please try again later.');
   }
 
-  if (!geminiAvailable && groqPerspective) {
+  if ((!geminiAvailable || !geminiPerspective) && groqPerspective) {
     const groqSynthesisPrompt = isChartQuery
       ? `Provide a professional technical analysis report (max 200 words). Include:
 - Clear trend direction
