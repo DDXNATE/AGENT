@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import './App.css'
 import FinvizMap from './components/FinvizMap'
 import '../src/styles/FinvizMap.css'
+import Sectors from './components/Sectors'
+import InsiderTrading from './components/InsiderTrading'
 import soundManager from './utils/soundManager'
 import { onAuthStateChange, getCurrentUser, signOut } from './utils/supabase'
 import AuthPage from './components/AuthPage'
@@ -316,6 +318,24 @@ function App() {
           Map
         </button>
         <button
+          className={`tab-btn ${activeTab === 'sectors' ? 'active' : ''}`}
+          onClick={() => {
+            soundManager.tabSwitch()
+            setActiveTab('sectors')
+          }}
+        >
+          Sectors
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'insider' ? 'active' : ''}`}
+          onClick={() => {
+            soundManager.tabSwitch()
+            setActiveTab('insider')
+          }}
+        >
+          Insider
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'news' ? 'active' : ''}`}
           onClick={() => {
             soundManager.tabSwitch()
@@ -558,6 +578,14 @@ function App() {
 
         {activeTab === 'map' && (
           <FinvizMap selectedPair={selectedPair} />
+        )}
+
+        {activeTab === 'sectors' && (
+          <Sectors />
+        )}
+
+        {activeTab === 'insider' && (
+          <InsiderTrading />
         )}
 
         {activeTab === 'planner' && (
