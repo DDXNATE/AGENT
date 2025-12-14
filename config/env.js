@@ -9,6 +9,11 @@ const REQUIRED_SECRETS = {
     description: 'Groq AI API key',
     getUrl: 'https://console.groq.com/keys'
   },
+  AIMLAPI_API_KEY: {
+    required: false,
+    description: 'AIML API key (fallback AI)',
+    getUrl: 'https://aimlapi.com/app/keys'
+  },
   FINNHUB_API_KEY: {
     required: false,
     description: 'Finnhub stock data API key',

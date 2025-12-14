@@ -54,6 +54,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 let geminiAI = null;
 let groqAI = null;
+const AIMLAPI_KEY = process.env.AIMLAPI_API_KEY;
 
 if (process.env.GEMINI_API_KEY) {
   geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -1204,6 +1205,32 @@ async function callGroq(prompt, systemPrompt = '') {
   return response.choices[0]?.message?.content || '';
 }
 
+async function callAIML(prompt, systemPrompt = '') {
+  if (!AIMLAPI_KEY) return '';
+  try {
+    const response = await fetch('https://api.aimlapi.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${AIMLAPI_KEY}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt || SYSTEM_PROMPT },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 1200
+      })
+    });
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || '';
+  } catch (error) {
+    console.error('AIML API Error:', error);
+    return '';
+  }
+}
+
 async function getChartsContext(pair = null, includeAnalysis = true) {
   let context = '';
   const pairs = pair ? [pair.toUpperCase()] : Object.keys(chartStorage);
@@ -1532,7 +1559,14 @@ async function chainOfDebate(userQuery, requestedPair = null) {
   }
 
   if (!geminiPerspective && !groqPerspective) {
-    throw new Error('Both AI services are unavailable. Please try again later.');
+    // Try AIML API as final fallback
+    if (AIMLAPI_KEY) {
+      const aimlResponse = await callAIML(geminiPrompt, SYSTEM_PROMPT);
+      if (aimlResponse) {
+        return `${aimlResponse}\n\n_Note: Using AIML API fallback_`;
+      }
+    }
+    throw new Error('All AI services are unavailable. Please try again later.');
   }
 
   if ((!geminiAvailable || !geminiPerspective) && groqPerspective) {

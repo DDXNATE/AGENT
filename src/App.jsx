@@ -12,7 +12,14 @@ const TIMEFRAMES = ['15m', '1hr', '4hr', 'daily'];
 function App() {
   const [session, setSession] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('pippy_messages')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('chat')
@@ -42,6 +49,12 @@ function App() {
 
   useEffect(() => {
     scrollToBottom()
+    // Save messages to sessionStorage
+    try {
+      sessionStorage.setItem('pippy_messages', JSON.stringify(messages))
+    } catch (e) {
+      console.error('Failed to save messages:', e)
+    }
   }, [messages])
 
   useEffect(() => {
@@ -63,6 +76,7 @@ function App() {
     await signOut()
     setSession(null)
     setMessages([])
+    sessionStorage.removeItem('pippy_messages')
     soundManager.click()
   }
 
