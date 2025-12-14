@@ -284,8 +284,8 @@ function App() {
       const data = await response.json()
 
       if (response.ok) {
-        if (data.response) {
-          setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+        if (data.reply) {
+          setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
           // Play AI response sound
           soundManager.messageReceive()
         }
