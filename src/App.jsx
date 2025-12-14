@@ -7,7 +7,6 @@ import { onAuthStateChange, getCurrentUser, signOut } from './utils/supabase'
 import AuthPage from './components/AuthPage'
 
 const TRADING_PAIRS = ['US30', 'NAS100', 'SPX500'];
-const TIMEFRAMES = ['15m', '1hr', '4hr', 'daily'];
 
 function App() {
   const [session, setSession] = useState(null)
@@ -27,19 +26,13 @@ function App() {
   const [stocks, setStocks] = useState([])
   const [stocksMeta, setStocksMeta] = useState(null)
   const [news, setNews] = useState([])
-  const [charts, setCharts] = useState({})
-  const [uploading, setUploading] = useState(false)
-  const [uploadTimeframe, setUploadTimeframe] = useState('daily')
   const [stocksLoading, setStocksLoading] = useState(false)
   const [newsLoading, setNewsLoading] = useState(false)
   const [autoRefresh, setAutoRefresh] = useState(true)
-  const [analyzing, setAnalyzing] = useState(false)
-  const [chartAnalysis, setChartAnalysis] = useState(null)
   const [plannerData, setPlannerData] = useState(null)
   const [plannerLoading, setPlannerLoading] = useState(false)
   const [plannerStatus, setPlannerStatus] = useState(null)
   const messagesEndRef = useRef(null)
-  const fileInputRef = useRef(null)
 
 
 
@@ -91,8 +84,6 @@ function App() {
       fetchStocks(selectedPair)
     } else if (activeTab === 'news') {
       fetchNews(selectedPair)
-    } else if (activeTab === 'charts') {
-      fetchCharts(selectedPair)
     } else if (activeTab === 'planner') {
       fetchPlannerStatus(selectedPair)
     }
@@ -135,62 +126,6 @@ function App() {
     }
   }
 
-  const fetchCharts = async (pair) => {
-    try {
-      const response = await fetch(`/api/charts/${pair}`)
-      const data = await response.json()
-      setCharts(data || {})
-    } catch (error) {
-      console.error('Error fetching charts:', error)
-    }
-  }
-
-  const analyzeCharts = async (timeframe = null) => {
-    setAnalyzing(true)
-    setChartAnalysis(null)
-    try {
-      const response = await fetch('/api/analyze-chart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pair: selectedPair, timeframe })
-      })
-      const data = await response.json()
-      if (data.success) {
-        setChartAnalysis(data)
-      } else {
-        setChartAnalysis({ error: data.error })
-      }
-    } catch (error) {
-      console.error('Error analyzing charts:', error)
-      setChartAnalysis({ error: 'Failed to analyze charts' })
-    } finally {
-      setAnalyzing(false)
-    }
-  }
-
-  const quickAnalysis = async (timeframe) => {
-    setAnalyzing(true)
-    try {
-      const response = await fetch('/api/quick-analysis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pair: selectedPair, timeframe })
-      })
-      const data = await response.json()
-      if (data.success) {
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: `**Quick Analysis - ${selectedPair} ${timeframe}:**\n\n${data.analysis}\n\n_Processed in ${data.processingTimeMs}ms_`
-        }])
-        setActiveTab('chat')
-      }
-    } catch (error) {
-      console.error('Error in quick analysis:', error)
-    } finally {
-      setAnalyzing(false)
-    }
-  }
-
   const fetchPlannerStatus = async (pair) => {
     try {
       const response = await fetch(`/api/planner/status/${pair}`)
@@ -205,15 +140,12 @@ function App() {
     setPlannerLoading(true)
     setPlannerData(null)
     try {
-      // Fetch all necessary data for analysis
-      const [chartsRes, stocksRes, newsRes, mapRes] = await Promise.all([
-        fetch(`/api/charts/${selectedPair}`),
+      const [stocksRes, newsRes, mapRes] = await Promise.all([
         fetch(`/api/stocks/${selectedPair}`),
         fetch(`/api/news/${selectedPair}`),
         fetch(`/api/market-map/${selectedPair}`)
       ])
 
-      const charts = await chartsRes.json()
       const stocks = await stocksRes.json()
       const news = await newsRes.json()
       const map = await mapRes.json()
@@ -223,7 +155,6 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pair: selectedPair,
-          charts: charts,
           stocks: stocks,
           news: news,
           map: map
@@ -240,35 +171,6 @@ function App() {
       setPlannerData({ error: 'Failed to generate trading plan' })
     } finally {
       setPlannerLoading(false)
-    }
-  }
-
-  const handleChartUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    setUploading(true)
-    const formData = new FormData()
-    formData.append('chart', file)
-    formData.append('pair', selectedPair)
-    formData.append('timeframe', uploadTimeframe)
-
-    try {
-      const response = await fetch('/api/upload-chart', {
-        method: 'POST',
-        body: formData
-      })
-      const data = await response.json()
-      if (data.success) {
-        fetchCharts(selectedPair)
-      }
-    } catch (error) {
-      console.error('Error uploading chart:', error)
-    } finally {
-      setUploading(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
     }
   }
 
@@ -327,10 +229,9 @@ function App() {
   }
 
   const quickCommands = [
-    { label: 'Analyze my charts', cmd: `Hey Pippy, analyze my charts for ${selectedPair}` },
     { label: 'Major stocks update', cmd: `Hey Pippy, what are major stocks doing for ${selectedPair}?` },
     { label: 'Market news', cmd: `Hey Pippy, any news affecting ${selectedPair}?` },
-    { label: 'Trading setup', cmd: `Hey Pippy, what trading setups do you see for ${selectedPair}?` }
+    { label: 'Market overview', cmd: `Hey Pippy, give me a market overview for ${selectedPair}` }
   ]
 
 
@@ -397,15 +298,6 @@ function App() {
           Chat
         </button>
         <button
-          className={`tab-btn ${activeTab === 'charts' ? 'active' : ''}`}
-          onClick={() => {
-            soundManager.tabSwitch()
-            setActiveTab('charts')
-          }}
-        >
-          Charts
-        </button>
-        <button
           className={`tab-btn ${activeTab === 'stocks' ? 'active' : ''}`}
           onClick={() => {
             soundManager.tabSwitch()
@@ -468,16 +360,16 @@ function App() {
                     <h2>Hey there! I'm Pippy</h2>
                     <p>
                       Your AI trading assistant for <strong>{selectedPair}</strong>.
-                      Upload your charts, check live stock prices, or ask me anything about trading!
+                      Check live stock prices, market maps, and news - ask me anything about trading!
                     </p>
                     <div className="welcome-features">
                       <div className="feature">
-                        <span className="feature-icon">📈</span>
-                        <span>Upload & analyze charts</span>
-                      </div>
-                      <div className="feature">
                         <span className="feature-icon">💹</span>
                         <span>Real-time stock screener</span>
+                      </div>
+                      <div className="feature">
+                        <span className="feature-icon">🗺️</span>
+                        <span>Market heat maps</span>
                       </div>
                       <div className="feature">
                         <span className="feature-icon">📰</span>
@@ -524,102 +416,6 @@ function App() {
                   Send
                 </button>
               </form>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'charts' && (
-          <div className="charts-section">
-            <div className="upload-section">
-              <h3>Upload Chart for {selectedPair}</h3>
-              <div className="upload-controls">
-                <select
-                  value={uploadTimeframe}
-                  onChange={(e) => setUploadTimeframe(e.target.value)}
-                  className="timeframe-select"
-                >
-                  {TIMEFRAMES.map(tf => (
-                    <option key={tf} value={tf}>{tf}</option>
-                  ))}
-                </select>
-                <label className="upload-btn">
-                  {uploading ? 'Uploading...' : 'Choose Chart Image'}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleChartUpload}
-                    disabled={uploading}
-                    hidden
-                  />
-                </label>
-                <button
-                  className={`analyze-btn ${analyzing ? 'loading' : ''}`}
-                  onClick={() => analyzeCharts()}
-                  disabled={analyzing || Object.keys(charts).length === 0}
-                >
-                  {analyzing ? 'Analyzing...' : 'AI Analyze All Charts'}
-                </button>
-              </div>
-            </div>
-
-            {chartAnalysis && (
-              <div className="analysis-results">
-                {chartAnalysis.error ? (
-                  <div className="analysis-error">{chartAnalysis.error}</div>
-                ) : (
-                  <>
-                    <div className="analysis-header">
-                      <h4>AI Technical Analysis - {chartAnalysis.pair}</h4>
-                      <span className="analysis-meta">
-                        {chartAnalysis.meta?.chartsAnalyzed} chart(s) analyzed in {chartAnalysis.meta?.processingTimeMs}ms
-                      </span>
-                    </div>
-                    {chartAnalysis.analyses?.map((analysis, i) => (
-                      <div key={i} className="analysis-card">
-                        <div className="analysis-tf-badge">{analysis.timeframe}</div>
-                        <div className="analysis-content">{analysis.analysis}</div>
-                        <div className="analysis-timestamp">
-                          Analyzed: {new Date(analysis.analyzedAt).toLocaleString()}
-                        </div>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-
-            <div className="charts-grid">
-              {TIMEFRAMES.map(tf => (
-                <div key={tf} className="chart-timeframe-section">
-                  <div className="chart-section-header">
-                    <h4>{tf.toUpperCase()} Charts</h4>
-                    {charts[tf]?.length > 0 && (
-                      <button
-                        className="quick-analyze-btn"
-                        onClick={() => quickAnalysis(tf)}
-                        disabled={analyzing}
-                      >
-                        Quick Analyze
-                      </button>
-                    )}
-                  </div>
-                  <div className="chart-list">
-                    {charts[tf]?.length > 0 ? (
-                      charts[tf].map((chart, i) => (
-                        <div key={i} className="chart-item">
-                          <img src={chart.path} alt={`${selectedPair} ${tf}`} />
-                          <span className="chart-date">
-                            {new Date(chart.uploadedAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="no-charts">No {tf} charts uploaded yet</p>
-                    )}
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         )}
@@ -792,22 +588,13 @@ function App() {
             </div>
 
             <div className="planner-data-sources">
-              <div className={`data-source-card ${plannerStatus?.status?.charts === 'ready' ? 'ready' : 'pending'}`}>
-                <div className="source-header">
-                  <span className="source-icon">📊</span>
-                  <span className="source-title">Chart Analysis</span>
-                </div>
-                <div className="source-value">{plannerStatus?.status?.chartCount || 0} charts</div>
-                <div className="source-status-badge">{plannerStatus?.status?.charts === 'ready' ? '✓ Ready' : '⚠ Missing'}</div>
-              </div>
-
-              <div className={`data-source-card ${plannerStatus?.status?.geminiAI === 'ready' ? 'ready' : 'pending'}`}>
+              <div className={`data-source-card ${plannerStatus?.status?.groqAI === 'ready' ? 'ready' : 'pending'}`}>
                 <div className="source-header">
                   <span className="source-icon">🤖</span>
                   <span className="source-title">AI Engine</span>
                 </div>
-                <div className="source-value">Gemini API</div>
-                <div className="source-status-badge">{plannerStatus?.status?.geminiAI === 'ready' ? '✓ Ready' : '⚠ Configure'}</div>
+                <div className="source-value">Groq AI</div>
+                <div className="source-status-badge">{plannerStatus?.status?.groqAI === 'ready' ? '✓ Ready' : '⚠ Configure'}</div>
               </div>
 
               <div className={`data-source-card ${plannerStatus?.status?.finnhub === 'ready' ? 'ready' : 'pending'}`}>
@@ -815,8 +602,17 @@ function App() {
                   <span className="source-icon">💹</span>
                   <span className="source-title">Market Data</span>
                 </div>
-                <div className="source-value">Real-time Data</div>
+                <div className="source-value">Real-time Stocks</div>
                 <div className="source-status-badge">{plannerStatus?.status?.finnhub === 'ready' ? '✓ Ready' : '⚠ Configure'}</div>
+              </div>
+
+              <div className="data-source-card ready">
+                <div className="source-header">
+                  <span className="source-icon">🗺️</span>
+                  <span className="source-title">Market Map</span>
+                </div>
+                <div className="source-value">Sector Heatmap</div>
+                <div className="source-status-badge">✓ Ready</div>
               </div>
             </div>
 
@@ -824,7 +620,7 @@ function App() {
               <div className="plan-loading-pro">
                 <div className="loading-spinner-large"></div>
                 <h3>Generating Your Trading Plan</h3>
-                <p>Analyzing charts, market data, and news to create your personalized strategy...</p>
+                <p>Analyzing stocks, market map, and news to create your personalized strategy...</p>
                 <p className="loading-hint">This may take 10-30 seconds</p>
               </div>
             ) : plannerData ? (
@@ -832,9 +628,9 @@ function App() {
                 <div className="plan-error-pro">
                   <h3>⚠️ Unable to Generate Plan</h3>
                   <p>{plannerData.error}</p>
-                  {plannerData.error.includes('GEMINI') && (
+                  {plannerData.error.includes('GROQ') && (
                     <div className="error-solution">
-                      <strong>Solution:</strong> Add GEMINI_API_KEY in the Secrets tab to enable AI analysis
+                      <strong>Solution:</strong> Add GROQ_API_KEY in the Secrets tab to enable AI analysis
                     </div>
                   )}
                 </div>
@@ -847,11 +643,11 @@ function App() {
                     </div>
                     <div className="metadata-divider"></div>
                     <div className="metadata-sources">
-                      <span className={`source-badge ${plannerData.dataSources?.chartAnalysis === 'success' ? 'success' : 'warning'}`}>
-                        📈 Charts
-                      </span>
                       <span className={`source-badge ${plannerData.dataSources?.stockData === 'success' ? 'success' : 'warning'}`}>
                         💹 Stocks
+                      </span>
+                      <span className={`source-badge ${plannerData.dataSources?.mapData === 'success' ? 'success' : 'warning'}`}>
+                        🗺️ Map
                       </span>
                       <span className={`source-badge ${plannerData.dataSources?.news === 'success' ? 'success' : 'warning'}`}>
                         📰 News
@@ -877,12 +673,12 @@ function App() {
                       </div>
                       <div className="insights-list">
                         <div className="insight-item">
-                          <span className="insight-icon">📈</span>
-                          <span>Technical analysis from your charts</span>
+                          <span className="insight-icon">💹</span>
+                          <span>Real-time stock data for {selectedPair}</span>
                         </div>
                         <div className="insight-item">
-                          <span className="insight-icon">📊</span>
-                          <span>Real-time market data for {selectedPair}</span>
+                          <span className="insight-icon">🗺️</span>
+                          <span>Market sector heatmap analysis</span>
                         </div>
                         <div className="insight-item">
                           <span className="insight-icon">📰</span>
@@ -927,17 +723,17 @@ function App() {
                 <div className="empty-content">
                   <div className="empty-icon-large">📅</div>
                   <h2>Ready to Generate Your Trading Plan?</h2>
-                  <p>Click the button above to create an AI-powered trading strategy based on your charts and market analysis</p>
+                  <p>Click the button above to create an AI-powered trading strategy based on stocks, market map, and news</p>
 
                   <div className="empty-requirements">
                     <h4>Requirements:</h4>
                     <div className="req-item">
-                      <span className={plannerStatus?.status?.charts === 'ready' ? '✓' : '✗'}>Charts</span>
-                      <span className="req-text">{plannerStatus?.status?.charts === 'ready' ? 'Charts uploaded' : 'Upload charts in Charts tab'}</span>
+                      <span className={plannerStatus?.status?.groqAI === 'ready' ? '✓' : '✗'}>AI Key</span>
+                      <span className="req-text">{plannerStatus?.status?.groqAI === 'ready' ? 'Groq API configured' : 'Add GROQ_API_KEY'}</span>
                     </div>
                     <div className="req-item">
-                      <span className={plannerStatus?.status?.geminiAI === 'ready' ? '✓' : '✗'}>AI Key</span>
-                      <span className="req-text">{plannerStatus?.status?.geminiAI === 'ready' ? 'API configured' : 'Add GEMINI_API_KEY'}</span>
+                      <span className={plannerStatus?.status?.finnhub === 'ready' ? '✓' : '✗'}>Market Data</span>
+                      <span className="req-text">{plannerStatus?.status?.finnhub === 'ready' ? 'Finnhub configured' : 'Add FINNHUB_API_KEY'}</span>
                     </div>
                   </div>
                 </div>

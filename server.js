@@ -543,6 +543,9 @@ async function fetchCompanyNews(symbol, daysBack = 7) {
 
     const response = await fetch(`https://finnhub.io/api/v1/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${FINNHUB_KEY}`);
     const data = await response.json();
+    if (!Array.isArray(data)) {
+      return [];
+    }
     return data.slice(0, 5).map(news => ({
       headline: news.headline,
       summary: news.summary,
@@ -561,6 +564,9 @@ async function fetchMarketNews() {
   try {
     const response = await fetch(`https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_KEY}`);
     const data = await response.json();
+    if (!Array.isArray(data)) {
+      return [];
+    }
     return data.slice(0, 10).map(news => ({
       headline: news.headline,
       summary: news.summary,
@@ -1877,11 +1883,9 @@ app.delete('/api/trades/:id', async (req, res) => {
 const PLANNER_PROMPT = `You are an expert trading planner for indices (US30, NAS100, SPX500). Your job is to synthesize multiple data sources into a clear, actionable trading plan for today.
 
 Given the following information:
-1. CHART ANALYSIS - Technical analysis of uploaded charts
-2. STOCK TRENDS - How major component stocks are performing
-3. MARKET HEATMAP - Market sector performance and breadth analysis
-4. MARKET NEWS - Recent news affecting the markets
-5. ECONOMIC CALENDAR - High-impact economic events
+1. STOCK TRENDS - How major component stocks are performing
+2. MARKET HEATMAP - Market sector performance and breadth analysis
+3. MARKET NEWS - Recent news affecting the markets
 
 Create a comprehensive but concise trading plan with the following structure:
 
@@ -1894,24 +1898,21 @@ Create a comprehensive but concise trading plan with the following structure:
 [2-3 sentences summarizing the overall market outlook]
 
 ### KEY FACTORS
-1. **Technical:** [Brief summary of chart analysis]
-2. **Market Breadth:** [Heatmap analysis - gainers vs losers, sector momentum]
-3. **Sentiment:** [Stock performance summary]
-4. **Fundamentals:** [News impact summary]
-5. **Events:** [High-impact events to watch]
+1. **Market Breadth:** [Heatmap analysis - gainers vs losers, sector momentum]
+2. **Stock Performance:** [Major stocks performance summary]
+3. **News Impact:** [News impact summary]
 
 ### MARKET HEATMAP INSIGHTS
 - **Breadth Indicator:** [Analysis of market strength based on gainers/losers ratio]
 - **Sector Momentum:** [Which sectors leading/lagging and implications]
-- **Confirmation:** [How heatmap confirms or conflicts with chart analysis]
+- **Market Direction:** [Overall direction based on sector performance]
 
 ### ACTION PLAN
 - **Primary Direction:** [LONG / SHORT / WAIT]
-- **Key Levels to Watch:**
-  - Entry Zone: [price range]
-  - Stop Loss: [price]
-  - Take Profit 1: [price]
-  - Take Profit 2: [price]
+- **Key Considerations:**
+  - Market sentiment based on stocks performance
+  - Sector rotation signals
+  - News catalysts to monitor
 
 ### RISK WARNINGS
 [List any major risks or events that could invalidate the plan, especially breadth divergences]
@@ -1934,24 +1935,9 @@ async function generateTradingPlan(pair, additionalData = {}) {
     throw new Error('Invalid trading pair');
   }
 
-  // Step 1: Gather all data sources in parallel
   const startTime = Date.now();
 
-  const [chartAnalyses, stockData, newsData, economicCalendar, mapData] = await Promise.all([
-    // Chart analysis
-    (async () => {
-      try {
-        const charts = chartStorage[normalizedPair];
-        if (!charts || Object.keys(charts).length === 0) {
-          return { status: 'no_charts', message: 'No charts uploaded for analysis' };
-        }
-        const analyses = await getSmartChartAnalysis(normalizedPair);
-        return { status: 'success', analyses };
-      } catch (e) {
-        return { status: 'error', message: e.message };
-      }
-    })(),
-
+  const [stockData, newsData, mapData] = await Promise.all([
     // Stock data
     (async () => {
       try {
@@ -1988,9 +1974,6 @@ async function generateTradingPlan(pair, additionalData = {}) {
       }
     })(),
 
-    // Economic calendar placeholder
-    Promise.resolve({ today: [], upcoming: [], allHighImpact: [] }),
-
     // Market map data
     (async () => {
       try {
@@ -2004,18 +1987,7 @@ async function generateTradingPlan(pair, additionalData = {}) {
     })()
   ]);
 
-  // Step 2: Build context for AI
   let context = `Trading Pair: ${normalizedPair} (${pairInfo.name})\nDate: ${new Date().toLocaleDateString()}\n\n`;
-
-  // Chart analysis context
-  context += '=== CHART ANALYSIS ===\n';
-  if (chartAnalyses.status === 'success' && chartAnalyses.analyses) {
-    chartAnalyses.analyses.forEach(a => {
-      context += `[${a.timeframe}] ${a.analysis.substring(0, 500)}...\n\n`;
-    });
-  } else {
-    context += `${chartAnalyses.message || 'No chart data available'}\n\n`;
-  }
 
   // Stock trends context
   context += '=== MAJOR STOCKS PERFORMANCE ===\n';
@@ -2102,14 +2074,9 @@ async function generateTradingPlan(pair, additionalData = {}) {
       pair: normalizedPair,
       plan: response.choices[0]?.message?.content || '',
       dataSources: {
-        chartAnalysis: chartAnalyses.status,
         stockData: stockData.status,
-        news: newsData.status,
-        economicCalendar: economicCalendar.today?.length > 0 || economicCalendar.upcoming?.length > 0 ? 'success' : 'no_events'
-      },
-      economicEvents: {
-        today: economicCalendar.today || [],
-        upcoming: (economicCalendar.upcoming || []).slice(0, 5)
+        mapData: mapData.status,
+        news: newsData.status
       },
       meta: {
         processingTimeMs: processingTime,
@@ -2125,13 +2092,13 @@ async function generateTradingPlan(pair, additionalData = {}) {
 // Planner API endpoint
 app.post('/api/planner/generate', async (req, res) => {
   try {
-    const { pair, charts, stocks, news, map } = req.body;
+    const { pair, stocks, news, map } = req.body;
 
     if (!pair || !TRADING_PAIRS[pair.toUpperCase()]) {
       return res.status(400).json({ error: 'Invalid trading pair' });
     }
 
-    const plan = await generateTradingPlan(pair, { charts, stocks, news, map });
+    const plan = await generateTradingPlan(pair, { stocks, news, map });
     res.json(plan);
   } catch (error) {
     console.error('Planner error:', error);
@@ -2149,19 +2116,13 @@ app.get('/api/planner/status/:pair', async (req, res) => {
     return res.status(404).json({ error: 'Invalid trading pair' });
   }
 
-  const charts = chartStorage[normalizedPair] || {};
-  const chartCount = Object.values(charts).reduce((acc, arr) => acc + arr.length, 0);
-
   res.json({
     pair: normalizedPair,
     status: {
-      charts: chartCount > 0 ? 'ready' : 'missing',
-      chartCount,
       groqAI: groqAI ? 'ready' : 'missing',
       finnhub: FINNHUB_KEY ? 'ready' : 'missing'
     },
     requirements: {
-      charts: 'Upload at least one chart for the selected pair',
       groqAI: 'Add GROQ_API_KEY in Secrets for AI analysis',
       finnhub: 'Add FINNHUB_API_KEY in Secrets for stock data'
     }
