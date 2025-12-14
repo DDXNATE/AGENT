@@ -3,7 +3,6 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import { GoogleGenAI } from '@google/genai';
 import Groq from 'groq-sdk';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -52,13 +51,8 @@ const upload = multer({
 
 app.use('/uploads', express.static(uploadsDir));
 
-let geminiAI = null;
 let groqAI = null;
 const AIMLAPI_KEY = process.env.AIMLAPI_API_KEY;
-
-if (process.env.GEMINI_API_KEY) {
-  geminiAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-}
 
 if (process.env.GROQ_API_KEY) {
   groqAI = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -1082,22 +1076,6 @@ app.get('/api/trading-pairs', (req, res) => {
   res.json(pairs);
 });
 
-async function callGemini(prompt, systemPrompt = '') {
-  try {
-    const response = await geminiAI.models.generateContent({
-      model: 'gemini-2.0-flash',
-      config: {
-        systemInstruction: systemPrompt || SYSTEM_PROMPT
-      },
-      contents: prompt
-    });
-    return response.text || '';
-  } catch (error) {
-    console.error('Gemini API Error:', error);
-    return '';
-  }
-}
-
 async function analyzeChartImage(imagePath, pair, timeframe, analysisType = 'full') {
   if (!groqAI) {
     throw new Error('Groq API not configured for image analysis');
@@ -1535,43 +1513,30 @@ async function chainOfDebate(userQuery, requestedPair = null) {
     ? `Provide precise technical analysis. Include specific price levels, patterns, and actionable trade setups.`
     : `Answer briefly in 2-3 short paragraphs max. Use tables for any stock data.`;
 
-  const geminiPrompt = `${enhancedQuery}\n\n${technicalPrompt}`;
   const groqPrompt = `${enhancedQuery}\n\n${technicalPrompt} Add risk considerations and alternative scenarios.`;
 
-  let geminiPerspective = null;
   let groqPerspective = null;
-  let geminiAvailable = true;
 
-  const results = await Promise.allSettled([
-    callGemini(geminiPrompt, SYSTEM_PROMPT),
-    callGroq(groqPrompt, SYSTEM_PROMPT)
-  ]);
-
-  if (results[0].status === 'fulfilled' && results[0].value) {
-    geminiPerspective = results[0].value;
-  } else {
-    geminiAvailable = false;
-    console.log('Gemini unavailable, using Groq-only mode');
+  try {
+    groqPerspective = await callGroq(groqPrompt, SYSTEM_PROMPT);
+  } catch (err) {
+    console.error('Groq error:', err);
   }
 
-  if (results[1].status === 'fulfilled' && results[1].value) {
-    groqPerspective = results[1].value;
-  }
-
-  if (!geminiPerspective && !groqPerspective) {
-    // Try AIML API as final fallback
+  if (!groqPerspective) {
+    // Try AIML API as fallback
     if (AIMLAPI_KEY) {
-      const aimlResponse = await callAIML(geminiPrompt, SYSTEM_PROMPT);
+      const aimlResponse = await callAIML(groqPrompt, SYSTEM_PROMPT);
       if (aimlResponse) {
         return `${aimlResponse}\n\n_Note: Using AIML API fallback_`;
       }
     }
-    throw new Error('All AI services are unavailable. Please try again later.');
+    throw new Error('AI service is unavailable. Please try again later.');
   }
 
-  if ((!geminiAvailable || !geminiPerspective) && groqPerspective) {
-    const groqSynthesisPrompt = isChartQuery
-      ? `Provide a professional technical analysis report (max 200 words). Include:
+  // Synthesize response with Groq
+  const synthesisPrompt = isChartQuery
+    ? `Provide a professional technical analysis report (max 200 words). Include:
 - Clear trend direction
 - Key support/resistance levels  
 - Pattern identification
@@ -1582,64 +1547,29 @@ Query: ${userQuery}
 
 Analysis:
 ${groqPerspective}`
-      : `Provide a concise answer (max 150 words). Use tables for data. No intro phrases.
+    : `Provide a concise answer (max 150 words). Use tables for data. No intro phrases.
 
 Query: ${userQuery}
 
 Analysis:
 ${groqPerspective}`;
 
-    try {
-      const fallbackAnswer = await callGroq(groqSynthesisPrompt, SYSTEM_PROMPT);
-      if (fallbackAnswer) {
-        return `${fallbackAnswer}\n\n_Note: Running in Groq-only mode (Gemini quota exceeded)_`;
-      }
-    } catch (err) {
-      console.error('Groq synthesis fallback error:', err);
-    }
-    // Return original Groq perspective if synthesis fails
-    return `${groqPerspective}\n\n_Note: Running in Groq-only mode (Gemini quota exceeded)_`;
-  }
-
-  const synthesisPrompt = isChartQuery
-    ? `Synthesize into a professional technical analysis report (max 200 words). Include:
-- Clear trend direction
-- Key support/resistance levels
-- Pattern identification
-- Trade bias with entry/SL/TP if applicable
-- Risk/Reward assessment
-
-Query: ${userQuery}
-
-Technical View 1:
-${geminiPerspective}
-
-Risk-Aware View 2:
-${groqPerspective}`
-    : `Combine into ONE concise answer (max 150 words). Use tables for data. No intro phrases.
-
-Query: ${userQuery}
-
-View 1:
-${geminiPerspective}
-
-View 2:
-${groqPerspective}`;
-
   try {
-    const finalAnswer = await callGemini(synthesisPrompt, SYSTEM_PROMPT);
-    return finalAnswer;
-  } catch (error) {
-    if (groqPerspective) {
-      return `${groqPerspective}\n\n_Note: Using Groq response (Gemini synthesis unavailable)_`;
+    const finalAnswer = await callGroq(synthesisPrompt, SYSTEM_PROMPT);
+    if (finalAnswer) {
+      return finalAnswer;
     }
-    throw error;
+  } catch (err) {
+    console.error('Groq synthesis error:', err);
   }
+  
+  // Return original response if synthesis fails
+  return groqPerspective;
 }
 
 // --- AI NEWS SCRAPER ---
 async function fetchAIWebNews(pair) {
-  if (!geminiAI) return [];
+  if (!groqAI) return [];
 
   const scrapePrompt = `You are a viral Financial News Scraper Agent.
   
@@ -1654,31 +1584,31 @@ async function fetchAIWebNews(pair) {
   [
     {
       "type": "social",
-      "source": "@CryptoWhale" (or other believable handle),
+      "source": "@CryptoWhale",
       "headline": "The tweet text itself (keep it punchy, use emojis)",
       "summary": "AI Note: Why this matters for ${pair}",
       "datetime": "Just now",
       "url": "https://twitter.com/search?q=${pair}",
-      "sentiment": "bullish" | "bearish" | "neutral",
-      "virality": 95 (random high number)
+      "sentiment": "bullish",
+      "virality": 95
     }
   ]
   `;
 
   try {
-    const response = await geminiAI.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: scrapePrompt
+    const response = await groqAI.chat.completions.create({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: scrapePrompt }],
+      max_tokens: 1000
     });
-    const text = response.text().trim();
+    const text = response.choices[0]?.message?.content?.trim() || '';
 
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       const tweets = JSON.parse(jsonMatch[0]);
-      // Add real timestamps so they sort to the top
       return tweets.map(t => ({
         ...t,
-        datetime: new Date().toISOString() // "Now"
+        datetime: new Date().toISOString()
       }));
     }
     return [];

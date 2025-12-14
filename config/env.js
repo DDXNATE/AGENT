@@ -1,11 +1,6 @@
 const REQUIRED_SECRETS = {
-  GEMINI_API_KEY: {
-    required: false,
-    description: 'Google Gemini AI API key',
-    getUrl: 'https://aistudio.google.com/apikey'
-  },
   GROQ_API_KEY: {
-    required: false,
+    required: true,
     description: 'Groq AI API key',
     getUrl: 'https://console.groq.com/keys'
   },
@@ -81,7 +76,6 @@ function checkEnvironment() {
 
 function getEnvStatus() {
   return {
-    geminiReady: !!process.env.GEMINI_API_KEY,
     groqReady: !!process.env.GROQ_API_KEY,
     finnhubReady: !!process.env.FINNHUB_API_KEY,
     alphaVantageReady: !!process.env.ALPHA_VANTAGE_API_KEY
