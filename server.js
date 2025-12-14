@@ -1589,8 +1589,16 @@ Query: ${userQuery}
 Analysis:
 ${groqPerspective}`;
 
-    const fallbackAnswer = await callGroq(groqSynthesisPrompt, SYSTEM_PROMPT);
-    return `${fallbackAnswer}\n\n_Note: Running in Groq-only mode (Gemini quota exceeded)_`;
+    try {
+      const fallbackAnswer = await callGroq(groqSynthesisPrompt, SYSTEM_PROMPT);
+      if (fallbackAnswer) {
+        return `${fallbackAnswer}\n\n_Note: Running in Groq-only mode (Gemini quota exceeded)_`;
+      }
+    } catch (err) {
+      console.error('Groq synthesis fallback error:', err);
+    }
+    // Return original Groq perspective if synthesis fails
+    return `${groqPerspective}\n\n_Note: Running in Groq-only mode (Gemini quota exceeded)_`;
   }
 
   const synthesisPrompt = isChartQuery
