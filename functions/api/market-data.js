@@ -86,6 +86,13 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (!env.ALPHA_VANTAGE_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: 'API key missing', required: ['ALPHA_VANTAGE_API_KEY'] }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+
   try {
     const url = new URL(request.url);
     const instrument = url.searchParams.get('instrument') || 'US30';

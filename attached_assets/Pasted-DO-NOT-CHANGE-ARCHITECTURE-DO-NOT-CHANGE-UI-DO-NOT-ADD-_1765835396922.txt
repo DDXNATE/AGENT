@@ -1,0 +1,66 @@
+DO NOT CHANGE ARCHITECTURE.
+DO NOT CHANGE UI.
+DO NOT ADD EXPRESS AS PRODUCTION DEPENDENCY.
+
+OBJECTIVE:
+Enable LOCAL VALIDATION of the existing serverless functions
+inside Replit for development ONLY,
+while keeping Cloudflare Pages + Workers as the final production target.
+
+STRICT RULES:
+- Production deployment MUST remain Cloudflare Pages + Functions
+- No Express in production
+- No UI changes
+- No logic rewrites
+- No API behavior changes
+
+TASKS TO PERFORM:
+
+1) LOCAL SERVERLESS DEV MODE
+- Add Wrangler as a DEV-ONLY dependency
+- Configure a local Wrangler dev workflow
+- Ensure /functions/api/* endpoints are executable locally
+- Do NOT convert functions into Express routes
+
+2) VITE ↔ WORKERS BRIDGE
+- Ensure Vite dev server proxies /api/* requests to Wrangler (port 8788)
+- Confirm frontend fetch('/api/...') works locally
+- No hardcoded localhost URLs in frontend
+
+3) ENVIRONMENT VARIABLE VALIDATION
+- Add runtime checks:
+  - If GROQ_API_KEY or ALPHA_VANTAGE_API_KEY is missing,
+    return a clear JSON error:
+    { "error": "API key missing", "required": ["GROQ_API_KEY", "ALPHA_VANTAGE_API_KEY"] }
+- Do NOT log keys
+- Do NOT expose keys to frontend
+
+4) SMOKE TEST ENDPOINTS
+- Create a lightweight /api/health endpoint (serverless)
+- It must return:
+  {
+    "status": "ok",
+    "runtime": "cloudflare-workers",
+    "functions": ["analyze", "market-data", "news", "chat"]
+  }
+- No external API calls inside /health
+
+5) DOCUMENT DEV vs PROD BEHAVIOR
+- Update ONE markdown file:
+  - Explain:
+    - Why functions do not run in Replit by default
+    - How Wrangler enables local dev
+    - How Cloudflare runs this in production
+- No other documentation edits
+
+DO NOT:
+- Add mock data
+- Add fallback AI
+- Change Alpha Vantage usage
+- Change Groq model
+- Touch UI files
+
+FINAL OUTPUT REQUIRED:
+1) Confirmation that local /api/* works via Wrangler
+2) Confirmation frontend successfully calls local serverless APIs
+3) Confirmation production deployment remains unchanged

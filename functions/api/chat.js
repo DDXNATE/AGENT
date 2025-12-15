@@ -19,6 +19,13 @@ export async function onRequest(context) {
     );
   }
 
+  if (!env.GROQ_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: 'API key missing', required: ['GROQ_API_KEY'] }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+
   try {
     const body = await request.json();
     const { message, instrument, history } = body;

@@ -194,6 +194,17 @@ export async function onRequest(context) {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const missingKeys = [];
+  if (!env.GROQ_API_KEY) missingKeys.push('GROQ_API_KEY');
+  if (!env.ALPHA_VANTAGE_API_KEY) missingKeys.push('ALPHA_VANTAGE_API_KEY');
+  
+  if (missingKeys.length > 0) {
+    return new Response(
+      JSON.stringify({ error: 'API key missing', required: missingKeys }),
+      { status: 500, headers: corsHeaders }
+    );
+  }
+
   try {
     const url = new URL(request.url);
     const instrument = url.searchParams.get('instrument') || 'US30';
