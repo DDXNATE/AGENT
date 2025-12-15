@@ -377,23 +377,22 @@ function App() {
               <div className="messages-container">
                 {messages.length === 0 && (
                   <div className="welcome-message">
-                    <h2>Hey there! I'm Pippy</h2>
+                    <h2>Pippy AI</h2>
                     <p>
-                      Your AI trading assistant for <strong>{selectedPair}</strong>.
-                      Check live stock prices, market maps, and news - ask me anything about trading!
+                      Powered by Groq • Your advanced AI trading analyst for <strong>{selectedPair}</strong>
                     </p>
                     <div className="welcome-features">
                       <div className="feature">
-                        <span className="feature-icon">💹</span>
-                        <span>Real-time stock screener</span>
+                        <span className="feature-icon">🚀</span>
+                        <span>Lightning-fast AI responses</span>
                       </div>
                       <div className="feature">
-                        <span className="feature-icon">🗺️</span>
-                        <span>Market heat maps</span>
+                        <span className="feature-icon">📊</span>
+                        <span>Smart technical analysis</span>
                       </div>
                       <div className="feature">
-                        <span className="feature-icon">📰</span>
-                        <span>Live market news</span>
+                        <span className="feature-icon">⚡</span>
+                        <span>Trade journaling & insights</span>
                       </div>
                     </div>
                   </div>

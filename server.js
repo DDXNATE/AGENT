@@ -52,7 +52,6 @@ const upload = multer({
 app.use('/uploads', express.static(uploadsDir));
 
 let groqAI = null;
-const AIMLAPI_KEY = process.env.AIMLAPI_API_KEY;
 
 if (process.env.GROQ_API_KEY) {
   groqAI = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -1189,31 +1188,6 @@ async function callGroq(prompt, systemPrompt = '') {
   return response.choices[0]?.message?.content || '';
 }
 
-async function callAIML(prompt, systemPrompt = '') {
-  if (!AIMLAPI_KEY) return '';
-  try {
-    const response = await fetch('https://api.aimlapi.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AIMLAPI_KEY}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: systemPrompt || SYSTEM_PROMPT },
-          { role: 'user', content: prompt }
-        ],
-        max_tokens: 1200
-      })
-    });
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || '';
-  } catch (error) {
-    console.error('AIML API Error:', error);
-    return '';
-  }
-}
 
 async function getChartsContext(pair = null, includeAnalysis = true) {
   let context = '';
@@ -1527,16 +1501,10 @@ async function chainOfDebate(userQuery, requestedPair = null) {
     groqPerspective = await callGroq(groqPrompt, SYSTEM_PROMPT);
   } catch (err) {
     console.error('Groq error:', err);
+    throw new Error('Failed to get response from Groq AI. Please try again.');
   }
 
   if (!groqPerspective) {
-    // Try AIML API as fallback
-    if (AIMLAPI_KEY) {
-      const aimlResponse = await callAIML(groqPrompt, SYSTEM_PROMPT);
-      if (aimlResponse) {
-        return `${aimlResponse}\n\n_Note: Using AIML API fallback_`;
-      }
-    }
     throw new Error('AI service is unavailable. Please try again later.');
   }
 
