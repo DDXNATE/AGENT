@@ -1,0 +1,196 @@
+READ CAREFULLY. ALL POINTS ARE MANDATORY.
+
+DO NOT CHANGE UI:
+- Do NOT modify layout
+- Do NOT modify colors
+- Do NOT modify fonts
+- Do NOT modify spacing
+- Do NOT redesign components
+- UI must remain visually IDENTICAL
+
+PROJECT GOAL:
+Convert the existing Replit project into a PRODUCTION WEBSITE
+with deep AI market intelligence,
+running 24/7,
+deployable to Cloudflare Pages,
+without relying on local machines,
+and without changing the UI.
+
+────────────────────────────────
+ARCHITECTURE TARGET (WEBSITE-FIRST)
+────────────────────────────────
+
+This MUST be a WEBSITE, not an app.
+
+- Static frontend (Vite / React build)
+- Serverless backend logic only
+- No Express server
+- No long-running backend
+- No local runtime dependency
+- Must work after Replit is closed
+
+Final structure:
+
+/frontend  → static website (UI only)
+/functions → serverless intelligence APIs
+/build     → deployable to Cloudflare Pages
+
+────────────────────────────────
+API HANDLING (CRITICAL)
+────────────────────────────────
+
+- API keys must NEVER exist in frontend code
+- API keys must NEVER be exposed to browser
+- API keys must be read only from environment variables
+- Serverless functions are the ONLY place APIs are called
+
+Allowed APIs:
+- Groq API (single AI model only)
+- Alpha Vantage (market / screener data)
+
+NOT ALLOWED:
+- ChatGPT website usage
+- Browser automation
+- UI scraping
+- Headless browsing
+- Multiple AI models
+- Fallback AI models
+
+────────────────────────────────
+CORE INTELLIGENCE SYSTEM
+────────────────────────────────
+
+Implement ONE deterministic, repeatable
+MARKET INTELLIGENCE CYCLE per user request.
+
+This is the heart of the system.
+
+──────────────
+STEP 1 — CONTEXT LOCK
+──────────────
+- Read selected instrument from UI:
+  US30 / NAS100 / SPX500
+- Lock all reasoning to this instrument
+- No cross-instrument leakage
+
+──────────────
+STEP 2 — DATA INGESTION (STRUCTURED)
+──────────────
+Fetch and compute ONLY structured data:
+
+- Current price snapshot
+- Session high / low
+- Market breadth (advancers vs decliners)
+- Sector contribution (derived)
+- News sentiment signals (headline-level)
+- Session context (Asia / London / New York)
+
+IMPORTANT:
+- Finviz / Investing links are DISPLAY ONLY
+- No scraping those sites
+- AI must never guess missing data
+
+──────────────
+STEP 3 — SIGNAL NORMALIZATION (DEPTH ENGINE)
+──────────────
+Convert raw data into normalized signals.
+
+Examples:
+- Breadth: Strong / Mixed / Weak
+- Structure: Bullish / Neutral / Bearish
+- Volatility: Low / Normal / High
+- Macro tone: Risk-on / Risk-off
+- Momentum: Expanding / Contracting
+
+This step is REQUIRED.
+No skipping.
+This is where DEPTH comes from.
+
+──────────────
+STEP 4 — AI REASONING (SINGLE MODEL)
+──────────────
+- Use Groq API ONLY
+- Provide AI with normalized signals ONLY
+- No raw data dumps
+- No narration
+- AI must reason analytically
+
+AI must:
+- Weigh signals
+- Resolve conflicts
+- Produce a single coherent market view
+
+──────────────
+STEP 5 — DECISION ENGINE OUTPUT
+──────────────
+AI must return ONLY structured JSON.
+
+NO markdown.
+NO emojis.
+NO conversational tone.
+
+Required output schema:
+
+{
+  "instrument": "US30",
+  "bias": "Bullish | Bearish | Neutral",
+  "confidence": "Low | Medium | High",
+  "drivers": ["max 5 concise points"],
+  "levels": {
+    "support": [],
+    "resistance": [],
+    "extension": []
+  },
+  "invalidation": "single clear rule",
+  "session": "Asia | London | New York",
+  "summary": "concise professional conclusion"
+}
+
+──────────────
+STEP 6 — UI RENDERING
+──────────────
+- UI consumes JSON only
+- UI renders using existing components
+- No new UI logic
+- No layout changes
+- No styling changes
+
+────────────────────────────────
+SERVERLESS IMPLEMENTATION RULES
+────────────────────────────────
+
+- Each request is stateless
+- No memory between requests
+- No background jobs
+- No cron required
+- Functions must be idempotent
+- Response time optimized (<2s target)
+
+────────────────────────────────
+WEBSITE CONVERSION RULES
+────────────────────────────────
+
+- Remove Express / server.js
+- Remove any local servers
+- Convert backend logic into serverless functions
+- Ensure `npm run build` produces static output
+- Ensure deploy works on Cloudflare Pages
+- Ensure environment variables are documented
+
+────────────────────────────────
+DELIVERABLES REQUIRED FROM YOU
+────────────────────────────────
+
+1) Updated WEBSITE-FIRST architecture explanation
+2) Market Intelligence Cycle implementation
+3) Signal normalization logic
+4) Serverless function structure
+5) Confirmation UI is unchanged
+6) Confirmation deployment is Cloudflare-ready
+
+FAILURE CONDITIONS:
+- UI changes → FAIL
+- API keys in frontend → FAIL
+- Multiple AI models → FAIL
+- App-style backend → FAIL
+- Shallow reasoning → FAIL
