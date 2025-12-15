@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import '../styles/InsiderTrading.css'
+import { getInsiderData } from '../services/insiderService'
 
 export default function InsiderTrading() {
   const [insiderData, setInsiderData] = useState([])
@@ -13,8 +14,7 @@ export default function InsiderTrading() {
   const fetchInsiderData = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/insider-trading')
-      const data = await response.json()
+      const data = await getInsiderData()
       setInsiderData(data.trades || [])
     } catch (error) {
       console.error('Error fetching insider data:', error)

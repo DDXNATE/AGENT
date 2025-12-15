@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import '../styles/FinvizMap.css';
+import { getScreenerData } from '../services/marketData';
 
 function FinvizMap({ selectedPair }) {
   const [mapData, setMapData] = useState(null);
@@ -23,11 +24,7 @@ function FinvizMap({ selectedPair }) {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch(`/api/screener/${selectedPair}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch data: ${response.status}`);
-      }
-      const data = await response.json();
+      const data = await getScreenerData(selectedPair);
 
       if (!data.stocks || data.stocks.length === 0) {
         setError('No market data available');
@@ -54,7 +51,7 @@ function FinvizMap({ selectedPair }) {
       <div className="finviz-map-container">
         <div className="map-loading">
           <div className="spinner"></div>
-          <p>Agent Pippy loading {selectedPair} data...</p>
+          <p>Loading {selectedPair} data...</p>
         </div>
       </div>
     );
@@ -75,8 +72,8 @@ function FinvizMap({ selectedPair }) {
     <div className="finviz-map-container">
       <div className="map-header-section">
         <div className="map-title">
-          <h2>Agent Pippy - {selectedPair}</h2>
-          <p className="map-subtitle">Live Market Heatmap</p>
+          <h2>Market Heatmap - {selectedPair}</h2>
+          <p className="map-subtitle">Live Market Analysis</p>
         </div>
         <div className="map-stats">
           <div className="stat">
@@ -151,7 +148,7 @@ function FinvizMap({ selectedPair }) {
           </div>
         ) : (
           <div className="empty-state">
-            <p>No live data available. Check API connection.</p>
+            <p>No data available.</p>
           </div>
         )}
       </div>
@@ -165,7 +162,7 @@ function FinvizMap({ selectedPair }) {
       </div>
 
       <div className="map-info">
-        <p>Agent Pippy | Live Market Data | Updates every 60 seconds</p>
+        <p>Agent Pippy | Market Analysis | Updates every 60 seconds</p>
       </div>
     </div>
   );

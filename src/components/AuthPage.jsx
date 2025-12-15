@@ -3,7 +3,7 @@ import { signUp, signIn } from '../utils/supabase';
 import '../styles/AuthPage.css';
 
 export default function AuthPage({ onAuthSuccess }) {
-  const [mode, setMode] = useState('login'); // 'login' or 'signup'
+  const [mode, setMode] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -81,7 +81,6 @@ export default function AuthPage({ onAuthSuccess }) {
         return;
       }
 
-      // Success
       const userData = {
         id: user.id,
         email: user.email || email,
@@ -94,7 +93,6 @@ export default function AuthPage({ onAuthSuccess }) {
         setSuccess('Logged in successfully!');
       }
 
-      // Give user feedback before switching
       setTimeout(() => {
         onAuthSuccess(userData);
       }, 500);
@@ -119,14 +117,12 @@ export default function AuthPage({ onAuthSuccess }) {
   return (
     <div className="auth-page">
       <div className="auth-container">
-        {/* Header */}
         <div className="auth-header">
           <div className="auth-logo">🤖</div>
           <h1>Agent Pippy</h1>
           <p className="auth-subtitle">AI Trading Assistant</p>
         </div>
 
-        {/* Tabs */}
         <div className="auth-tabs">
           <button
             className={`tab-button ${mode === 'login' ? 'active' : ''}`}
@@ -152,9 +148,7 @@ export default function AuthPage({ onAuthSuccess }) {
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="auth-form">
-          {/* Username - only for signup */}
           {mode === 'signup' && (
             <div className="form-group">
               <label htmlFor="username">Username</label>
@@ -170,7 +164,6 @@ export default function AuthPage({ onAuthSuccess }) {
             </div>
           )}
 
-          {/* Email */}
           <div className="form-group">
             <label htmlFor="email">Email Address</label>
             <input
@@ -184,7 +177,6 @@ export default function AuthPage({ onAuthSuccess }) {
             />
           </div>
 
-          {/* Password */}
           <div className="form-group">
             <label htmlFor="password">Password</label>
             <input
@@ -201,7 +193,6 @@ export default function AuthPage({ onAuthSuccess }) {
             )}
           </div>
 
-          {/* Confirm Password - only for signup */}
           {mode === 'signup' && (
             <div className="form-group">
               <label htmlFor="confirmPassword">Confirm Password</label>
@@ -217,7 +208,6 @@ export default function AuthPage({ onAuthSuccess }) {
             </div>
           )}
 
-          {/* Error Message */}
           {error && (
             <div className="error-message">
               <span className="error-icon">⚠️</span>
@@ -225,7 +215,6 @@ export default function AuthPage({ onAuthSuccess }) {
             </div>
           )}
 
-          {/* Success Message */}
           {success && (
             <div className="success-message">
               <span className="success-icon">✅</span>
@@ -233,7 +222,6 @@ export default function AuthPage({ onAuthSuccess }) {
             </div>
           )}
 
-          {/* Submit Button */}
           <button
             type="submit"
             className="submit-button"
@@ -250,7 +238,6 @@ export default function AuthPage({ onAuthSuccess }) {
           </button>
         </form>
 
-        {/* Toggle Mode */}
         <div className="auth-footer">
           <p>
             {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
@@ -263,11 +250,6 @@ export default function AuthPage({ onAuthSuccess }) {
               {mode === 'login' ? 'Sign up' : 'Login'}
             </button>
           </p>
-        </div>
-
-        {/* Demo Mode Info */}
-        <div className="demo-info">
-          <p>💡 <strong>Demo Mode Enabled:</strong> Log in with ANY email/password.</p>
         </div>
       </div>
     </div>

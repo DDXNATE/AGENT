@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import '../styles/Sectors.css'
+import { getSectorsData } from '../services/sectorsService'
 
 export default function Sectors() {
   const [sectorsData, setSectorsData] = useState([])
@@ -12,8 +13,7 @@ export default function Sectors() {
   const fetchSectorsData = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/sectors')
-      const data = await response.json()
+      const data = await getSectorsData()
       setSectorsData(data.sectors || [])
     } catch (error) {
       console.error('Error fetching sectors:', error)

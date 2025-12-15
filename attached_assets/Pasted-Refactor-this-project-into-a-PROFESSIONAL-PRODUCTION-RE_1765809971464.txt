@@ -1,0 +1,70 @@
+Refactor this project into a PROFESSIONAL, PRODUCTION-READY STATIC WEBSITE
+that is fully compatible with Cloudflare Pages.
+
+This is NOT a demo application and must NOT be labeled as demo, mock, fake,
+or placeholder anywhere in UI or code.
+
+High-level requirements:
+- One deployment only (Cloudflare Pages)
+- No Express server
+- No Node backend runtime
+- No split frontend/backend
+- Website must function fully as a professional product
+
+Required architectural changes:
+
+1. REMOVE SERVER RUNTIME
+   - Remove Express server and server startup logic
+   - Remove server-only files (server.js, app.js, routes, etc.)
+   - Remove API listeners and ports
+   - The site must not depend on /api/* endpoints
+
+2. STATIC-FIRST PROFESSIONAL LOGIC
+   - Replace server calls with client-side computation and structured logic
+   - Implement deterministic analysis, calculations, and workflows on the client
+   - Use modular services (services/*.ts) instead of API calls
+   - Data flows must look real and professional, not mocked or labeled demo
+
+3. DATA HANDLING
+   - Use local structured datasets (JSON / TS objects) as system inputs
+   - Implement state management cleanly (context/store)
+   - No visible randomness, no fake wording
+   - Behave like a real analytics system
+
+4. ENVIRONMENT & SECURITY
+   - Remove process.env usage
+   - Use import.meta.env.VITE_* only where necessary
+   - No secret keys in frontend
+   - Architecture must be ready to plug backend later without refactor
+
+5. CLOUDFARE PAGES COMPATIBILITY
+   - Ensure build output is static assets only
+   - Output directory must be dist/
+   - Add SPA fallback (_redirects)
+   - Ensure base path is "/"
+   - Website must load correctly on refresh and deep routes
+
+6. PACKAGE & BUILD
+   - Keep Vite-based build
+   - Scripts:
+     - dev: vite
+     - build: vite build
+     - preview: vite preview
+   - Remove unused server dependencies
+
+7. CODE QUALITY
+   - Clean, professional naming
+   - No “demo”, “mock”, “test”, or “fake” terminology
+   - UX must feel production-grade
+   - Errors must be handled gracefully
+
+Do NOT add:
+- Cloudflare Workers
+- Pages Functions
+- External backend services
+
+Final result must be:
+- A fully working professional website
+- Single Cloudflare Pages deployment
+- Realistic, stable, scalable frontend architecture
+- Ready for future backend integration without rewrite
